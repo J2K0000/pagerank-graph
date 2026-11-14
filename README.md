@@ -19,7 +19,7 @@ PageRank on its own knows nothing about your business, and that is the point. Th
 importance flows through your site, puts it next to what each page earns (Search Console clicks, GA4
 conversions or revenue, or your own figures), and shows the gap: pages that earn a lot but receive little,
 and pages that receive a lot but earn nothing. On many sites, the menu and footer hand the biggest share to
-legal notices, login and contact pages, while product pages starve.
+legal notices, cart and contact pages, while product pages starve.
 
 It then simulates fixes before you touch the site (move legal links to a sub-footer, add contextual links,
 cap the menu) and ranks them in an action plan with before and after figures.
@@ -48,8 +48,8 @@ cap the menu) and ranks them in an action plan with before and after figures.
 - **Not an autopilot.** Business classes, template detection and verdicts are hypotheses to review before
   you hand a report to anyone.
 
-**Language.** The tool's interface, reports and messages are in French. This documentation quotes the
-French labels as they appear on screen, with a translation.
+**Language.** The tool's interface, reports and messages are in French. This documentation translates them,
+and gives the main on-screen labels in French as well, between « ».
 
 ## Quick start
 
@@ -143,7 +143,7 @@ page; the gain shown is that of the move, never that of deleting the links), gro
 legal hub page, rescue starving pages with three contextual links from the best pages in their language,
 reconnect valuable pages that cannot be reached, cap menus, give dead ends a way out (pages only, never
 files), remove internal nofollow. Outputs: `actions.csv`, `brief_dev.md` (tickets ready for Jira or Notion),
-section "0. Verdict" of `findings.md`, "Plan d'action" (action plan) tab of the report. Effort levels are
+section « 0. Verdict » of `findings.md`, « Plan d’action » (action plan) tab of the report. Effort levels are
 default orders of magnitude, to be confirmed by the team. Turn it off with `--no-actions`, cap it with
 `--max-sims`.
 
@@ -154,7 +154,7 @@ the navigation, or added in the content.
 In the report: alignment KPI at the top, **Zero-waste scenario** button (« Scénario zéro déchet »: template
 links to legal pages removed, menus capped at 50 links, two editorial links per acquisition page to the money
 pages of its language), **Simulation delta** colour mode (« Delta de simulation »: green gains, red loses)
-with a Before / After switch, **Brief dev** button (Markdown).
+with a Before / After switch (« Avant » / « Après »), **Brief dev** button (Markdown).
 
 ## Steering by URL: pages to push, and governance
 
@@ -183,13 +183,14 @@ line: `--strategic targets.csv` (`url,weight`).
 
 Each action carries an **effort** label: 🧩 template (one component changed reaches every page, low dev
 cost, ×N lever) or ✍️ editorial (links added page by page). The plan is sorted by priority, then by gain
-over effort; the five best ratios are marked ⚡ quick win.
+over effort; the five best ratios are marked ⚡ quick win (« victoire rapide »).
 
 Internal PageRank is a zero-sum game: pushing one page pushes others down. To avoid sculpting in circles (a
 decision undone later to push another URL):
 
 1. decide as a **portfolio** (`--strategic`, Pages to push tab), never one URL at a time, and simulate the
-   whole batch; read the Drops section and the safeguard before adding a single link;
+   whole batch; read the score drops section (« Baisses de score ») and the safeguard before adding a
+   single link;
 2. prefer **template** levers (de-duplicate, move legal links out, cap menus), which lift every productive
    page without trading them against each other, over editorial transfers;
 3. keep editorial transfers **inside the target's silo** (topic-sensitive);

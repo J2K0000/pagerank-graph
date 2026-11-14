@@ -43,7 +43,7 @@ The report becomes usable by the consultant and presentable to the client.
   acquisition classes describes types of addresses and is no longer presented as "what earns"). Written in
   `findings.md` § 0 and the workbook.
 - `alignment.worst_family`: worst section gap across all languages, the headline figure of Presentation
-  mode, also written in `findings.md` § 0 and the summary tab so it has its evidence.
+  mode, also written in `findings.md` § 0 and the summary tab (« Synthèse ») so it has its evidence.
 - The before / after scenario applies exactly the template fixes of the plan (`scenario.tickets`), with the
   volume of each step (`scenario.changes`), instead of a separate set of rules.
 - Period of the business data: `--business-period`, or the `# période : ...` line written by `fetch-gsc` and
@@ -55,8 +55,9 @@ The report becomes usable by the consultant and presentable to the client.
 
 ### Spreadsheets
 
-- `report.xlsx` always produced (`--no-excel` to skip it): summary, action plan, pages, starving pages,
-  overfed pages, segments, flows between silos, model and read-me tabs; French headers, filters, frozen
+- `report.xlsx` always produced (`--no-excel` to skip it): « Synthèse » (summary), « Plan d'action » (action
+  plan), « Pages », « Famine » (starving pages), « Gouffres » (overfed pages), « Segments », « Flux entre
+  silos » (flows between silos), « Modèle » (model) and « Lisez-moi » (read-me) tabs; French headers, filters, frozen
   panes, formatted percentages, text cells never interpreted as formulas. The CSVs stay in machine format
   (comma, decimal point) for `diff` and other tools: in Excel with a decimal-comma locale, open the workbook,
   not the CSV.
@@ -113,7 +114,7 @@ advice, readability of the report.
 - Business classes decided on path segments, never on substrings (`/blog/legal-tech` is an article, `/legal`
   a legal page); new `confiance` (trust) class (about, team, press, FAQ); `contact` in money.
 - Graded template inference (weight `max(template, weight × (1 − share of linking pages))`), never applied to
-  strategic or money pages, list of affected targets in `findings.md` and the Model tab; option
+  strategic or money pages, list of affected targets in `findings.md` and the « Modèle » (model) tab; option
   `--no-boilerplate-inference`.
 - Overfed-page tickets: the gain shown is that of the prescribed action (links moved to the footer, or
   grouped behind a legal hub page), never that of deleting the links.

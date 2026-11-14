@@ -116,7 +116,7 @@ PageRank, reference flow `α PR(v) w'(v,u) / S'(v)` against effective flow `α P
 aggregated by target segment: `thermal_in_ref`, `thermal_in_eff`, `thermal_loss` (positive = the segment was
 receiving equity through off-topic links), plus the total mass rerouted and the flow between different
 segments before / after. Reported in `findings.md` § 2 bis, `graph.json` (`thermal`) and the viewer's
-Model tab.
+« Modèle » (model) tab.
 
 ## 5. Inputs
 
@@ -155,7 +155,7 @@ Model tab.
 - **Reading**: when `impressions` is available without being the value column, `analysis.py` computes a
   secondary "unserved demand" list (80 % cumulative impressions, score below the starving threshold, outside
   the starving list) exposed in `findings.md` § 4 bis, `graph.json` (`top.demand_starving`, `demand` field of
-  nodes, `meta.demand_col`, `meta.business_cols`) and the starving pages tab.
+  nodes, `meta.demand_col`, `meta.business_cols`) and the « Famine » (starving pages) tab.
 - `--segments`: rules `name<TAB>regex` (first match) or CSV `url,segment`. Default: first path segment.
 - `--strategic`, `--restart`, `--home`, `--utility-regex`, `--cannibalisation` (CSV `url,group`).
 - `--transitions`: CSV `source,target,transitions|count|clicks|sessions` (observed page-to-page clicks).

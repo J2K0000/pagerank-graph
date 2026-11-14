@@ -28,8 +28,8 @@ checks it).
 3. **Version and changelog.** Any change to the computation or to what the outputs show bumps the version
    (`prgraph/__init__.py`, SemVer numbering) and adds an entry to `CHANGELOG.md`. An analysis quotes the
    version that produced it: without that, it cannot be reproduced.
-4. **The tool speaks French.** Texts it produces (report, messages, Markdown outputs) are in French for now:
-   short sentences, no em dash (U+2014) in generated texts (tests check this). Documentation is in English.
+4. **The tool speaks French.** Texts it produces (report, messages, Markdown outputs) are in French: short
+   sentences, no em dash (U+2014) in generated texts (tests check this). Documentation is in English.
 5. **Security.** Any data coming from a crawled site (title, anchor, URL) is treated as hostile: escaped in
    the HTML report, neutralised in the CSVs and the workbook. The local server listens on 127.0.0.1 only and
    requires a token on every action. Report a vulnerability privately: see `SECURITY.md`.
