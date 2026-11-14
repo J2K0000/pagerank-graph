@@ -1,24 +1,26 @@
-# Sécurité
+# Security
 
-## Versions suivies
+## Supported versions
 
-Seule la dernière version publiée (`main`) reçoit des correctifs de sécurité.
+Only the latest published version (`main`) receives security fixes.
 
-## Signaler une faille
+## Reporting a vulnerability
 
-**N'ouvrez pas d'issue publique.** Utilisez le signalement privé de GitHub : onglet **Security** du dépôt, puis
-**Report a vulnerability**. Décrivez la faille, la version concernée (`prgraph --version`) et, si possible, les
-étapes pour la reproduire. Le signalement reste privé jusqu'à la publication d'un correctif.
+**Do not open a public issue.** Use GitHub's private reporting: the repository's **Security** tab, then
+**Report a vulnerability**. Describe the vulnerability, the affected version (`prgraph --version`) and, if
+possible, the steps to reproduce it. The report stays private until a fix is published.
 
-## Ce qui est dans le périmètre
+## In scope
 
-- **Le serveur local** (`prgraph serve`) : il n'écoute que sur 127.0.0.1, vérifie l'origine et l'hôte des
-  requêtes et exige un jeton sur chaque action. Toute requête acceptée depuis un autre site, toute lecture de
-  fichier hors du dossier des analyses ou toute exécution de commande est une faille.
-- **Le rapport HTML** (`report.html`) : les titres, ancres et URL viennent de sites crawlés et sont traités comme
-  hostiles. Tout code exécuté ou tout rapport rendu inutilisable par une donnée crawlée est une faille.
-- **Les exports** (`*.csv`, `report.xlsx`) : une cellule interprétée comme formule par un tableur est une faille.
-- **Le crawler** : un non-respect de `robots.txt` ou du délai entre requêtes est traité comme un défaut sérieux.
+- **The local server** (`prgraph serve`): it listens on 127.0.0.1 only, checks the origin and host of
+  requests and requires a token on every action. Any request accepted from another site, any file read
+  outside the analyses folder, or any command execution is a vulnerability.
+- **The HTML report** (`report.html`): titles, anchors and URLs come from crawled sites and are treated as
+  hostile. Any code executed, or any report made unusable, by crawled data is a vulnerability.
+- **The exports** (`*.csv`, `report.xlsx`): a cell interpreted as a formula by a spreadsheet is a
+  vulnerability.
+- **The crawler**: failing to respect `robots.txt` or the delay between requests is treated as a serious
+  defect.
 
-Les identifiants Google (Search Console, GA4) ne sont jamais stockés dans le projet : ils sont lus depuis la
-variable d'environnement `GOOGLE_APPLICATION_CREDENTIALS` ou un fichier passé en option.
+Google credentials (Search Console, GA4) are never stored in the project: they are read from the
+`GOOGLE_APPLICATION_CREDENTIALS` environment variable or from a file passed as an option.

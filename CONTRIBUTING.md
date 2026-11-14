@@ -1,11 +1,11 @@
-# Contribuer à pagerank-graph
+# Contributing to pagerank-graph
 
-Merci de vouloir améliorer l'outil. Ce guide dit comment l'installer pour le développement, lancer les tests et
-proposer une modification.
+Thank you for helping improve the tool. This guide explains how to install it for development, run the tests
+and propose a change.
 
-## Installer pour le développement
+## Install for development
 
-Python 3.11 ou plus récent.
+Python 3.11 or later.
 
 ```bash
 git clone https://github.com/J2K0000/pagerank-graph.git
@@ -14,36 +14,37 @@ pip install -e ".[test,google]"
 python -m pytest -q
 ```
 
-L'installation en mode éditable (`-e`) prend en compte vos modifications sans réinstaller. Après une montée de
-version dans `prgraph/__init__.py`, relancez `pip install -e .` : les métadonnées installées ne suivent pas toutes
-seules (un test le vérifie).
+The editable install (`-e`) picks up your changes without reinstalling. After a version bump in
+`prgraph/__init__.py`, run `pip install -e .` again: the installed metadata does not follow on its own (a test
+checks it).
 
-## Avant de proposer une modification
+## Before proposing a change
 
-1. **Un test pour chaque correction ou fonction.** La suite (`python -m pytest -q`) doit passer. Les tests tournent
-   automatiquement sur GitHub, sous Linux et Windows, pour Python 3.11, 3.13 et 3.14.
-2. **Données de test synthétiques seulement.** Jamais de crawl, d'export Search Console ou de nom d'un site réel
-   dans le dépôt, ni dans les tests, ni dans les exemples, ni dans les commentaires. Le générateur `prgraph demo`
-   produit un site fictif complet ; les tests construisent leurs petits graphes eux-mêmes (`https://s.fr/...`).
-3. **Version et journal.** Toute modification du calcul ou de ce qu'affichent les sorties monte la version
-   (`prgraph/__init__.py`, numérotation SemVer) et ajoute une entrée à `CHANGELOG.md`. Une analyse cite la version
-   qui l'a produite : sans cela, elle n'est pas reproductible.
-4. **Textes en français**, phrases courtes, sans tiret cadratin dans les textes produits (les tests le vérifient).
-5. **Sécurité.** Toute donnée venant d'un site crawlé (titre, ancre, URL) est traitée comme hostile : échappée
-   dans le rapport HTML, neutralisée dans les CSV et le classeur. Le serveur local n'écoute que sur 127.0.0.1 et
-   exige un jeton sur chaque action. Une faille se signale en privé : voir `SECURITY.md`.
+1. **One test for every fix or feature.** The suite (`python -m pytest -q`) must pass. Tests run automatically
+   on GitHub, on Linux and Windows, for Python 3.11, 3.13 and 3.14.
+2. **Synthetic test data only.** Never a crawl, a Search Console export or the name of a real site in the
+   repository: not in tests, not in examples, not in comments. `prgraph demo` generates a complete fictitious
+   site; tests build their own small graphs (`https://s.fr/...`).
+3. **Version and changelog.** Any change to the computation or to what the outputs show bumps the version
+   (`prgraph/__init__.py`, SemVer numbering) and adds an entry to `CHANGELOG.md`. An analysis quotes the
+   version that produced it: without that, it cannot be reproduced.
+4. **The tool speaks French.** Texts it produces (report, messages, Markdown outputs) are in French for now:
+   short sentences, no em dash (U+2014) in generated texts (tests check this). Documentation is in English.
+5. **Security.** Any data coming from a crawled site (title, anchor, URL) is treated as hostile: escaped in
+   the HTML report, neutralised in the CSVs and the workbook. The local server listens on 127.0.0.1 only and
+   requires a token on every action. Report a vulnerability privately: see `SECURITY.md`.
 
-## Proposer la modification
+## Proposing the change
 
-Ouvrez une pull request sur `main` avec : ce qui change, pourquoi, et comment vous l'avez vérifié (tests, capture
-du rapport si l'affichage change). Pour une modification importante (nouveau calcul, nouveau format d'entrée),
-ouvrez d'abord une issue pour en discuter.
+Open a pull request against `main` with: what changes, why, and how you checked it (tests, a screenshot of
+the report if the display changes). For a significant change (new computation, new input format), open an
+issue first to discuss it.
 
-Points d'entrée du code : `prgraph/loaders.py` (formats d'entrée), `prgraph/clean.py` (nettoyage du graphe),
-`prgraph/weights.py` (pondérations), `prgraph/pagerank.py` (calcul), `prgraph/analysis.py` (diagnostics),
-`prgraph/actions.py` (plan d'action), `prgraph/export.py` (sorties), `prgraph/viewer/` (rapport HTML),
-`prgraph/workbook.py` (classeur Excel). La note de conception est dans `docs/design.md`.
+Code entry points: `prgraph/loaders.py` (input formats), `prgraph/clean.py` (graph clean-up),
+`prgraph/weights.py` (weightings), `prgraph/pagerank.py` (computation), `prgraph/analysis.py` (diagnostics),
+`prgraph/actions.py` (action plan), `prgraph/export.py` (outputs), `prgraph/viewer/` (HTML report),
+`prgraph/workbook.py` (Excel workbook). The design note is in `docs/design.md`.
 
-## Licence
+## License
 
-En contribuant, vous acceptez que votre contribution soit publiée sous la licence MIT du projet (`LICENSE`).
+By contributing, you agree that your contribution is published under the project's MIT license (`LICENSE`).

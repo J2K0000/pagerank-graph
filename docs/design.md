@@ -1,194 +1,188 @@
-# pagerank-graph : note de conception
+# pagerank-graph: design note
 
-## 1. Problème résolu
+## 1. Problem solved
 
-Confronter la matrice des priorités business (marge, conversions, clics) à la matrice de la
-puissance algorithmique réelle (PageRank interne pondéré) pour montrer où le jus coule
-vraiment, et le faire voir sous forme de graphe à des équipes produit et tech.
+Put the map of business priorities (margin, conversions, clicks) next to the map of actual link power
+(weighted internal PageRank), show where link equity really flows, and make it visible as a graph to product
+and tech teams.
 
-## 2. Ce que l'outil apporte
+## 2. What the tool adds
 
-Un PageRank pondéré par position se calcule en quelques lignes ; ce qui manque d'ordinaire, c'est
-l'échelle, le nettoyage préalable, la lecture business et la visualisation. L'outil lit un CSV
-d'arêtes `source,target,position,nofollow,anchor` (ou l'export « All Inlinks » de Screaming Frog)
-et ajoute :
+A PageRank weighted by link position takes a few lines to compute; what is usually missing is scale, the
+clean-up beforehand, the business reading and the visualisation. The tool reads an edge CSV
+`source,target,position,nofollow,anchor` (or the Screaming Frog "All Inlinks" export) and adds:
 
-| Besoin | Réponse |
+| Need | Answer |
 |-----------------|---------|
-| Échelle (10^5 à 10^6 pages) | Table de hachage URL → entier, matrice CSR scipy, puissance itérée vectorisée |
-| Reasonable Surfer | Poids par position, fusion des multi-arêtes (poids le plus visible conservé) |
-| Nettoyage préalable | Résolution des chaînes 301 / canonical, 404 = équité perdue, nofollow = jus jeté |
-| Culs-de-sac | Masse des pages sans issue redistribuée (uniforme, vecteur de téléportation ou accueil) |
-| Téléportation biaisée | `--restart` : vecteur d'entrée observé (GSC, backlinks) |
-| Normalisation log 0-100 | `score = (ln PR - ln PRmin) / (ln PRmax - ln PRmin) * 100` |
-| CheiRank | Même calcul sur le graphe inversé, quadrants puits / hubs / passoires / nœuds morts |
-| Alignement business | Croisement part de valeur vs part de PageRank, par page et par segment |
-| Étanchéité des silos | Matrice des flux de PageRank entre segments, part de fuite par segment |
-| Trous noirs, pages sur-liées | Pages sans issue à forte entrée, pages utilitaires en tête de score |
-| What-if | Sous-commande `simulate` (Python) et panneau de simulation dans le visualiseur (JS) |
-| Pelote de laine | Contraction en méta-nœuds par segment, export plafonné des nœuds détaillés |
-| Communication | `report.html` autonome (sigma.js + ForceAtlas2), partageable sans serveur |
+| Scale (10^5 to 10^6 pages) | URL → integer hash table, scipy CSR matrix, vectorised power iteration |
+| Reasonable surfer | Weights by position, multiple links merged (most visible weight kept) |
+| Clean-up first | 301 / canonical chains resolved, 404 = lost equity, nofollow = equity thrown away |
+| Dead ends | Mass of pages with no way out redistributed (uniform, teleportation vector or home page) |
+| Biased teleportation | `--restart`: observed entry vector (Search Console, backlinks) |
+| Log 0-100 normalisation | `score = (ln PR - ln PRmin) / (ln PRmax - ln PRmin) * 100` |
+| CheiRank | Same computation on the reversed graph, quadrants `puits` (sinks) / `hub` / `passoire` (leaky) / `noeud_mort` (dead nodes) |
+| Business alignment | Share of value against share of PageRank, per page and per segment |
+| Silo tightness | Matrix of PageRank flows between segments, leak share per segment |
+| Black holes, over-linked pages | Dead-end pages with high inflow, utility pages at the top of the score |
+| What-if | `simulate` sub-command (Python) and simulation panel in the viewer (JS) |
+| Hairball | Contraction into meta-nodes per segment, capped export of detailed nodes |
+| Communication | Self-contained `report.html` (sigma.js + ForceAtlas2), shareable without a server |
 
 ## 3. Architecture
 
 ```
 prgraph/
   cli.py          compute | simulate | demo | crawl | crawl-static | serve | fetch-gsc | fetch-ga4 | gsc-sites
-  connectors.py   sources business branchées : Search Console (Search Analytics), GA4 (Data API), identifiants, fusion
-  loaders.py      lecture des CSV (format à positions, Screaming Frog, GSC, GA4, chemins relatifs), règles de segments
-  clean.py        normalisation d'URL, résolution 301 / canonical, filtrage des statuts, fusion des arêtes
-  weights.py      pondération au-delà de la position : clics observés (mélange), composante sémantique (cos ** decay)
-  graph.py        table URL → id, matrice CSR pondérée, sommes sortantes, flux par arête
-  pagerank.py     puissance itérée, culs-de-sac, téléportation, CheiRank, score log
-  analysis.py     segments, profondeur de clic réelle, quadrants, alignement business, fuites, trous noirs
-  simulate.py     règles de modification du graphe et comparaison avant / après
+  connectors.py   connected business sources: Search Console (Search Analytics), GA4 (Data API), credentials, merge
+  loaders.py      CSV reading (positions format, Screaming Frog, GSC, GA4, relative paths), segment rules
+  clean.py        URL normalisation, 301 / canonical resolution, status filtering, edge merging
+  weights.py      weighting beyond position: observed clicks (blend), semantic component (cos ** decay)
+  graph.py        URL → id table, weighted CSR matrix, outgoing sums, flow per edge
+  pagerank.py     power iteration, dead ends, teleportation, CheiRank, log score
+  analysis.py     segments, real click depth, quadrants, business alignment, leaks, black holes
+  simulate.py     graph change rules and before / after comparison
   export.py       pages.csv, segments.csv, flows.csv, findings.md, graph.json, report.html
-  demo.py         site synthétique (mégamenu, footer géant, pagination, PDF, 301, 404, cannibalisation)
-  crawl_static.py dossier HTML statique (dist Astro) → arêtes avec position détectée dans le DOM
-  viewer/template.html  visualiseur, données injectées dans la page (livré avec le paquet)
+  demo.py         synthetic site (mega menu, huge footer, pagination, PDF, 301, 404, cannibalisation)
+  crawl_static.py static HTML folder (Astro dist) → edges with position detected in the DOM
+  viewer/template.html  viewer, data injected into the page (shipped with the package)
 tests/                pytest
 ```
 
-Pipeline : `loaders → clean → graph → [weights : clics, sémantique] → pagerank (PR, CheiRank) → analysis → export`.
+Pipeline: `loaders → clean → graph → [weights: clicks, semantics] → pagerank (PR, CheiRank) → analysis → export`.
 
-## 4. Modèle mathématique
+## 4. Mathematical model
 
-Pondération par défaut (profil `raisonnable`) : content 1.0, breadcrumb 0.5, sidebar 0.25,
-header / nav 0.2, footer 0.05, unknown 0.6. Profil `modere` : header / nav 0.35, footer 0.10.
-Surcharge : `--weights "footer=0.02,nav=0.3"`.
+Default weighting (`raisonnable` profile): content 1.0, breadcrumb 0.5, sidebar 0.25, header / nav 0.2,
+footer 0.05, unknown 0.6. `modere` profile: header / nav 0.35, footer 0.10. Override:
+`--weights "footer=0.02,nav=0.3"`.
 
-Pour une page source v de somme sortante S(v) (y compris les poids des liens nofollow et
-des liens vers 404, qui comptent au dénominateur mais ne transmettent rien) :
+For a source page v with outgoing sum S(v) (including the weights of nofollow links and of links to 404s,
+which count in the denominator but pass nothing):
 
 ```
 PR(u) = (1 - d) * t(u) + d * [ sum_v w(v,u) / S(v) * PR(v) + m * r(u) ]
 ```
 
-t = vecteur de téléportation (uniforme ou `--restart`), m = masse des culs-de-sac et des
-fuites à l'itération courante, r = vecteur de redistribution (`--dangling uniform|teleport|home`).
-Arrêt quand la norme L1 de la différence est < 1e-9 ou après 200 itérations. Somme = 1 à
-chaque itération.
+t = teleportation vector (uniform or `--restart`), m = mass of dead ends and leaks at the current iteration,
+r = redistribution vector (`--dangling uniform|teleport|home`). Stops when the L1 norm of the difference is
+< 1e-9 or after 200 iterations. Sum = 1 at every iteration.
 
-CheiRank : même procédure sur la transposée (les arêtes inversées, mêmes poids).
+CheiRank: same procedure on the transpose (reversed edges, same weights).
 
-Fuites (poids au dénominateur, rien transmis) : lien vers 4xx/5xx, lien nofollow / sponsored / ugc, lien
-dont la cible finale est sur un autre hôte, lien vers une URL connue mais non récupérée (statut `robots`,
-`uncrawled`) ou découverte mais absente de la table d'URL (`--uncrawled leak`, défaut).
+Leaks (weight in the denominator, nothing passed): link to a 4xx/5xx, nofollow / sponsored / ugc link, link
+whose final target is on another host, link to a URL known but not fetched (status `robots`, `uncrawled`) or
+found but missing from the URL table (`--uncrawled leak`, the default).
 
-Inférence du gabarit (`clean.py`) : une cible liée en `content` / `unknown` depuis au moins
-`boilerplate_share` des pages émettrices (plancher 20, plafond `boilerplate_min_links`) voit ces liens
-requalifiés en `boilerplate` avec le poids `max(w_boilerplate, w × (1 − part))` ; jamais pour une page
-stratégique ou money (`protect`). Liste des cibles dans `stats["boilerplate_target_list"]`.
+Template inference (`clean.py`): a target linked as `content` / `unknown` from at least `boilerplate_share`
+of the linking pages (floor 20, cap `boilerplate_min_links`) gets these links requalified as `boilerplate`
+with weight `max(w_boilerplate, w × (1 − share))`; never for a strategic or money page (`protect`). List of
+targets in `stats["boilerplate_target_list"]`.
 
-Le vecteur de téléportation (`--restart`) est conservé par `simulate`, le plan d'action et le what-if
-du visualiseur (`meta.teleport`).
+The teleportation vector (`--restart`) is kept by `simulate`, the action plan and the viewer's what-if
+(`meta.teleport`).
 
-### 4bis. Pondération au-delà de la position (`weights.py`)
+### 4bis. Weighting beyond position (`weights.py`)
 
-Deux ajustements optionnels des poids w(v,u), appliqués dans cet ordre avant le PageRank.
+Two optional adjustments of the weights w(v,u), applied in this order before PageRank.
 
-**Clics observés** (`--transitions`, `--data-blend b`, défaut 0,7). Pour toute page source v qui a au
-moins une transition observée :
+**Observed clicks** (`--transitions`, `--data-blend b`, default 0.7). For any source page v with at least
+one observed transition:
 
 ```
 w'(v,u) = S_e(v) × [ b × T(v,u) / T(v) + (1 − b) × w(v,u) / S_e(v) ]
 ```
 
-T(v,u) = transitions observées v→u, T(v) = transitions sortantes de v, S_e(v) = somme heuristique des
-poids des arêtes de v (fuites exclues). La masse émise par v est conservée, sa part de fuite aussi. Une
-arête jamais cliquée sur une page qui a des données garde (1 − b) × w : le plancher évite le piège de
-circularité (un lien invisible disparaîtrait du modèle et ne pourrait plus être diagnostiqué), d'où le
-refus de b = 1. Les pages sans donnée gardent l'heuristique. Couverture reportée : part des arêtes et
-de la masse heuristique couvertes, pages sources avec donnée, couples non retrouvés.
+T(v,u) = observed transitions v→u, T(v) = outgoing transitions of v, S_e(v) = heuristic sum of the weights
+of v's edges (leaks excluded). The mass sent by v is kept, and so is its leak share. An edge never clicked
+on a page that has data keeps (1 − b) × w: the floor avoids the circularity trap (an invisible link would
+vanish from the model and could no longer be diagnosed), hence b = 1 is refused. Pages without data keep the
+heuristic. Coverage reported: share of edges and of heuristic mass covered, source pages with data, pairs
+not found.
 
-**Composante sémantique** (`--embeddings`, `--semantic-decay γ`, défaut 0,5). Avec e(v) le vecteur
-normalisé de la page v :
+**Semantic component** (`--embeddings`, `--semantic-decay γ`, default 0.5). With e(v) the normalised vector
+of page v:
 
 ```
 f(v,u) = max(0, e(v) · e(u)) ** γ        w''(v,u) = w'(v,u) × f(v,u) × S'(v) / Σ_u w'(v,u) f(v,u)
 ```
 
-La renormalisation par source conserve la masse émise : un lien hors sujet transmet moins, ses voisins
-thématiques récupèrent la différence. Facteur 1 pour une arête dont une extrémité n'a pas de vecteur ;
-poids d'origine conservés si toutes les arêtes d'une page tombent à zéro ; γ = 0 désactive la pénalité.
-Une arête de poids nul reste dans le graphe mais ne transmet rien (le dénominateur est protégé).
+Renormalising per source keeps the mass sent: an off-topic link passes less, its on-topic neighbours get the
+difference. Factor 1 for an edge with an end that has no vector; original weights kept if every edge of a
+page drops to zero; γ = 0 turns the penalty off. An edge of zero weight stays in the graph but passes
+nothing (the denominator is protected).
 
-**Déperdition thermique** (`analysis.py`, `w_ref` = poids avant pénalité). Au PageRank stationnaire
-effectif, flux de référence `α PR(v) w'(v,u) / S'(v)` contre flux effectif `α PR(v) w''(v,u) / S''(v)`,
-agrégés par segment cible : `thermal_in_ref`, `thermal_in_eff`, `thermal_loss` (positif = le segment
-recevait du jus par des liens hors sujet), plus la masse totale réacheminée et le flux entre segments
-différents avant / après. Reportée dans `findings.md` § 2 bis, `graph.json` (`thermal`) et l'onglet
-Modèle du visualiseur.
+**Thermal loss** (`analysis.py`, `w_ref` = weights before the penalty). At the effective stationary
+PageRank, reference flow `α PR(v) w'(v,u) / S'(v)` against effective flow `α PR(v) w''(v,u) / S''(v)`,
+aggregated by target segment: `thermal_in_ref`, `thermal_in_eff`, `thermal_loss` (positive = the segment was
+receiving equity through off-topic links), plus the total mass rerouted and the flow between different
+segments before / after. Reported in `findings.md` § 2 bis, `graph.json` (`thermal`) and the viewer's
+Model tab.
 
-## 5. Entrées
+## 5. Inputs
 
-- `--edges` : CSV `source,target,position,nofollow,anchor` (positions), export Screaming
-  Frog « All Inlinks » (colonnes `Source, Destination, Follow, Link Position, Type`), ou
-  `source,target[,weight]`. Détection automatique par en-tête.
-- `--urls` : CSV `url,status[,redirect_target][,canonical][,segment][,title]` ou export
-  Screaming Frog `internal_html` (`Address, Status Code, Redirect URL, Canonical Link Element 1`).
-  Sans ce fichier, tout nœud est supposé en 200. Statuts littéraux `robots` et `uncrawled` = URL non
-  récupérée (statut 0 : ni nœud ni cible valide).
-- Classes business (`analysis.class_of`) : décidées par segments de chemin (rubrique de contenu en premier
-  segment, puis segment légal entier ou à suffixe légal, segment de confiance entier, mot money ou
-  d'acquisition en début ou fin de segment ; racine d'une langue = accueil), six classes
-  (`money`, `acquisition`, `confiance`, `legal_support`, `neutre`, `accueil`) ; `--labels` garde des regex.
-- Données business : convention numérique décidée par colonne (`loaders.comma_is_thousands`).
-- `--business` : CSV `url` + colonnes de valeur (`revenue, conversions, clicks, sessions,
-  impressions, crawl_hits`), export GSC « Pages » ou GA4 « Pages et écrans » accepté (`--business-base-url`
-  préfixe les chemins relatifs). `--value-col` force la colonne.
+- `--edges`: CSV `source,target,position,nofollow,anchor` (positions), Screaming Frog "All Inlinks" export
+  (columns `Source, Destination, Follow, Link Position, Type`), or `source,target[,weight]`. Detected from
+  the header.
+- `--urls`: CSV `url,status[,redirect_target][,canonical][,segment][,title]` or Screaming Frog
+  `internal_html` export (`Address, Status Code, Redirect URL, Canonical Link Element 1`). Without this file,
+  every node is assumed to answer 200. Literal statuses `robots` and `uncrawled` = URL not fetched (status 0:
+  neither a node nor a valid target).
+- Business classes (`analysis.class_of`): decided by path segments (content section as first segment, then a
+  whole legal segment or one with a legal suffix, a whole trust segment, a money or acquisition word at the
+  start or end of a segment; root of a language = home), six classes (`money`, `acquisition`, `confiance`,
+  `legal_support`, `neutre`, `accueil`); `--labels` keeps regexes.
+- Business data: number convention decided per column (`loaders.comma_is_thousands`).
+- `--business`: CSV `url` + value columns (`revenue, conversions, clicks, sessions, impressions,
+  crawl_hits`), Search Console "Pages" or GA4 "Pages and screens" export accepted (`--business-base-url`
+  prefixes relative paths). `--value-col` forces the column.
 
-### 5bis. Sources business branchées (`connectors.py`)
+### 5bis. Connected business sources (`connectors.py`)
 
-- **Search Console** : `searchanalytics.query` avec `dimensions=[page]`, `type=web`, `rowLimit=25000`,
-  `startRow` incrémenté tant qu'une page pleine revient ; sortie `url, clicks, impressions, ctr, position`.
-  `sites.list` alimente la liste des propriétés du lanceur ; sans propriété saisie, `sc-domain:` du site.
-- **GA4** : `runReport` sur `landingPagePlusQueryString` (ou `landingPage`) avec `sessions, keyEvents,
-  totalRevenue`, `limit` 100 000 et `offset` ; les chemins sont préfixés par l'origine du site (`(not set)`
-  ignoré) ; sortie `url, sessions, conversions, revenue`.
-- **Identifiants** : `GOOGLE_APPLICATION_CREDENTIALS` ou `--credentials` ; compte de service, OAuth
-  « installed » (jeton en cache dans le dossier utilisateur) ou `authorized_user`. Rien dans le projet.
-- **Fusion** (`--merge`, `merge_business`) : clé = URL normalisée, métriques additives sommées, CTR et
-  position moyennés par les impressions, colonnes absentes complétées à zéro.
-- **Période** : `--days N` = N jours terminés trois jours avant aujourd'hui (données récentes incomplètes).
-- **Serveur** : `prepare_business` appelle le connecteur pendant la phase « calcul », écrit `business.csv`
-  dans le dossier du run ; `business_coverage` relit `pages.csv` pour reporter URL jointes et couverture.
-  Un échec du connecteur n'interrompt pas l'analyse (journal explicite, calcul sans business).
-- **Lecture** : quand `impressions` est disponible sans être la colonne de valeur, `analysis.py` calcule
-  une liste secondaire « demande non servie » (80 % cumulés des impressions, score sous le seuil de famine,
-  hors famine) exposée dans `findings.md` § 4 bis, `graph.json` (`top.demand_starving`, champ `demand`
-  des nœuds, `meta.demand_col`, `meta.business_cols`) et l'onglet Famine.
-- `--segments` : règles `nom<TAB>regex` (premier match) ou CSV `url,segment`. Défaut :
-  premier segment de chemin.
+- **Search Console**: `searchanalytics.query` with `dimensions=[page]`, `type=web`, `rowLimit=25000`,
+  `startRow` incremented as long as a full page comes back; output `url, clicks, impressions, ctr, position`.
+  `sites.list` feeds the launcher's list of properties; with no property typed in, `sc-domain:` of the site.
+- **GA4**: `runReport` on `landingPagePlusQueryString` (or `landingPage`) with `sessions, keyEvents,
+  totalRevenue`, `limit` 100,000 and `offset`; paths are prefixed with the site's origin (`(not set)`
+  ignored); output `url, sessions, conversions, revenue`.
+- **Credentials**: `GOOGLE_APPLICATION_CREDENTIALS` or `--credentials`; service account, OAuth "installed"
+  (token cached in the user folder) or `authorized_user`. Nothing in the project.
+- **Merge** (`--merge`, `merge_business`): key = normalised URL, additive metrics summed, CTR and position
+  averaged weighted by impressions, missing columns filled with zero.
+- **Period**: `--days N` = N complete days ending three days before today (recent data incomplete).
+- **Server**: `prepare_business` calls the connector during the computation phase and writes `business.csv`
+  in the run folder; `business_coverage` reads `pages.csv` back to report joined URLs and coverage. A
+  connector failure does not stop the analysis (explicit log, computation without business data).
+- **Reading**: when `impressions` is available without being the value column, `analysis.py` computes a
+  secondary "unserved demand" list (80 % cumulative impressions, score below the starving threshold, outside
+  the starving list) exposed in `findings.md` § 4 bis, `graph.json` (`top.demand_starving`, `demand` field of
+  nodes, `meta.demand_col`, `meta.business_cols`) and the starving pages tab.
+- `--segments`: rules `name<TAB>regex` (first match) or CSV `url,segment`. Default: first path segment.
 - `--strategic`, `--restart`, `--home`, `--utility-regex`, `--cannibalisation` (CSV `url,group`).
-- `--transitions` : CSV `source,target,transitions|count|clicks|sessions` (clics observés page à page).
-- `--embeddings` : CSV `url` + colonnes numériques, ou `url,vector` (vecteur JSON par ligne).
+- `--transitions`: CSV `source,target,transitions|count|clicks|sessions` (observed page-to-page clicks).
+- `--embeddings`: CSV `url` + numeric columns, or `url,vector` (one JSON vector per line).
 
-## 6. Sorties (`--out dossier/`)
+## 6. Outputs (`--out folder/`)
 
-`pages.csv`, `segments.csv`, `flows_segments.csv`, `findings.md` (français, version de
-l'outil et date en tête), `graph.json`, `report.html`. Le visualiseur embarque `graph.json` : un seul
-fichier à envoyer.
+`pages.csv`, `segments.csv`, `flows_segments.csv`, `findings.md` (in French, tool version and date at the
+top), `graph.json`, `report.html`. The viewer embeds `graph.json`: a single file to send.
 
-## 7. Visualiseur
+## 7. Viewer
 
-- Graphe sigma.js, layout ForceAtlas2 (worker), taille = score log, couleur au choix :
-  segment, alignement business (famine, gouffre, aligné, neutre), quadrant PR × CheiRank,
-  profondeur de clic.
-- Filtres : positions de liens, segments, score minimum, recherche d'URL.
-- Vue contractée : un méta-nœud par segment, arêtes = flux de PageRank, étiquette = part de
-  fuite ; retour à la vue détaillée par double-clic.
-- Panneaux : fiche de page (liens entrants / sortants avec position), tableaux famine,
-  gouffres, trous noirs, matrice des fuites, nuage PR × CheiRank.
-- What-if côté client : retirer une position de lien, plafonner les liens de navigation,
-  ajouter des liens par regex ; recalcul en JS (CSR, typed arrays) et deltas affichés.
-- Au-delà de `--max-nodes` (3000 par défaut) le détail est échantillonné (accueil,
-  stratégiques, anomalies, top score, échantillon par segment) ; la vue contractée reste
-  exacte et le what-if client est marqué « approximatif ».
+- sigma.js graph, ForceAtlas2 layout (worker), size = log score, colour of your choice: segment, business
+  alignment (starving, overfed, aligned, neutral), PR × CheiRank quadrant, click depth.
+- Filters: link positions, segments, minimum score, URL search.
+- Contracted view: one meta-node per segment, edges = PageRank flows, label = leak share; back to the
+  detailed view with a double-click.
+- Panels: page card (inbound / outbound links with position), tables of starving pages, overfed pages, black
+  holes, leak matrix, PR × CheiRank scatter.
+- Client-side what-if: remove a link position, cap navigation links, add links by regex; recomputation in JS
+  (CSR, typed arrays) and deltas displayed.
+- Beyond `--max-nodes` (3000 by default) the detail is sampled (home page, strategic pages, anomalies, top
+  score, sample per segment); the contracted view stays exact and the client what-if is flagged as
+  "approximate".
 
-## 8. Hors périmètre (volontairement)
+## 8. Out of scope (on purpose)
 
-Rendu JavaScript, calcul des vecteurs sémantiques
-(fournis en CSV, produits en amont), extraction des transitions depuis les logs ou BigQuery (fournies
-en CSV), décroissance temporelle, calcul distribué Spark. Les points d'extension sont indiqués dans
-le README.
+JavaScript rendering, computing the semantic vectors (provided as CSV, produced upstream), extracting
+transitions from logs or BigQuery (provided as CSV), time decay, distributed Spark computation. Extension
+points are listed in the README.

@@ -1,154 +1,167 @@
-# Journal des versions
+# Changelog
 
-Format inspiré de Keep a Changelog ; numérotation SemVer. La version du paquet est `prgraph.__version__`
-(relancer `pip install -e .` après une montée de version pour mettre à jour les métadonnées installées).
+Format inspired by Keep a Changelog; SemVer numbering. The package version is `prgraph.__version__` (run
+`pip install -e .` again after a version bump to update the installed metadata).
+
+## Unreleased
+
+### Documentation
+
+- README, CONTRIBUTING, SECURITY, this changelog and the design note are now in English. The README opens with
+  a plain-language explanation of what the tool does, what you get and what it is not. The tool's interface,
+  reports and messages stay in French.
 
 ## 0.5.0 (2026-11-11)
 
-Le rapport devient exploitable par le consultant et présentable au client.
+The report becomes usable by the consultant and presentable to the client.
 
-### Rapport HTML
+### HTML report
 
-- Deux modes dans le même fichier `report.html` : **Analyse** (l'explorateur, pour travailler) et **Présentation**
-  (un deck qu'on feuillette devant le client, une idée par écran, imprimable en PDF, une diapositive par page).
-  Bascule dans l'en-tête ; `report.html#presentation` ouvre directement le deck.
-- Mode Présentation : couverture, sommaire, verdict en trois tuiles, ce qui rapporte contre ce qui reçoit, carte
-  des silos, coût du gabarit, pages rentables mal reliées, plan d'action en cartes « on saura que ça marche »,
-  avant / après des chantiers de gabarit, une seule diapositive Méthode. Options `--brand-name`, `--brand-logo`,
-  `--brand-color` (neutre par défaut).
-- Mode Analyse : verdict lisible d'abord, score qui affiche « avant → après » pendant une simulation, vue silos
-  par défaut au niveau des familles de rubriques (variantes de langue regroupées), palette validée pour les
-  daltoniens, onglets accessibles au clavier, une ligne de définition sous chaque onglet et un onglet « Lire ce
-  rapport », tableaux triables, filtrables, paginés et exportables, thème clair ou sombre, mobile utilisable,
-  feuille d'impression.
-- Hors ligne : les bibliothèques du graphe (graphology, graphology-library, sigma.js, licences MIT dans
-  `prgraph/viewer/vendor/`) sont embarquées dans le rapport ; plus aucun appel à un tiers à l'ouverture (police
-  système). `--cdn` garde les balises CDN, avec empreintes d'intégrité.
+- Two modes in the same `report.html` file: **Analysis** (the explorer, to work) and **Presentation** (a deck
+  to page through in front of the client, one idea per screen, printable to PDF, one slide per page). Switch
+  in the header; `report.html#presentation` opens the deck directly.
+- Presentation mode: cover, contents, verdict in three tiles, what earns against what receives, silo map,
+  cost of the template, profitable pages that are poorly linked, action plan as cards with "how we will know
+  it works", before / after of the template fixes, a single Method slide. Options `--brand-name`,
+  `--brand-logo`, `--brand-color` (neutral by default).
+- Analysis mode: readable verdict first, score showing "before → after" during a simulation, silo view by
+  default at the level of section families (language variants grouped), palette checked for colour-blind
+  readers, tabs accessible from the keyboard, a definition line under each tab and a "how to read this
+  report" tab, tables that can be sorted, filtered, paged and exported, light or dark theme, usable on
+  mobile, print stylesheet.
+- Offline: the graph libraries (graphology, graphology-library, sigma.js, MIT licenses in
+  `prgraph/viewer/vendor/`) are embedded in the report; no third-party call on opening any more (system
+  font). `--cdn` keeps the CDN tags, with integrity hashes.
 
-### Données
+### Data
 
-- `graph.json` : `families` (rubriques sans préfixe de langue, emplacement de couleur fixe, « autres » au-delà de
-  sept), `segments[].family`, `scenario` (chantiers de gabarit appliqués ensemble : alignement, part des pages qui
-  rapportent, part du segment le plus sous-alimenté, avant et après), `meta.brand`.
-- `alignment.value_pages_pr_share` : part de l'autorité reçue par les pages qui cumulent 80 % de la valeur mesurée,
-  la seule mesure qui dit si l'autorité va à ce qui rapporte (la part des classes money + acquisition décrit des
-  types d'adresses, elle n'est plus présentée comme « ce qui rapporte »). Écrite dans `findings.md` § 0 et le classeur.
-- `alignment.worst_family` : pire écart de rubrique toutes langues, le chiffre de tête du mode Présentation, écrit
-  aussi dans `findings.md` § 0 et l'onglet Synthèse pour qu'il ait sa pièce.
-- Le scénario avant / après applique exactement les chantiers de gabarit du plan (`scenario.tickets`), avec le
-  volume de chaque étape (`scenario.changes`), au lieu d'un jeu de règles à part.
-- Période des données business : `--business-period`, ou ligne `# période : ...` écrite par `fetch-gsc` et
-  `fetch-ga4` en tête du CSV ; `meta.value_kind` distingue une valeur de trafic (clics, impressions, sessions),
-  que le rapport qualifie comme telle, d'une valeur business (revenu, conversions).
-- Textes des gains au format français (« +0,48 pt »).
-- La jointure des données business, des cibles et des groupes utilise la même normalisation que le graphe :
-  avec `--strip-query`, une URL Search Console `?utm_source=...` ou `#ancre` rejoint sa page.
+- `graph.json`: `families` (sections without language prefix, fixed colour slot, "others" beyond seven),
+  `segments[].family`, `scenario` (template fixes applied together: alignment, share of the pages that earn,
+  share of the most underfed segment, before and after), `meta.brand`.
+- `alignment.value_pages_pr_share`: share of importance received by the pages that carry 80 % of the
+  measured value, the only measure that says whether importance goes to what earns (the share of the money +
+  acquisition classes describes types of addresses and is no longer presented as "what earns"). Written in
+  `findings.md` § 0 and the workbook.
+- `alignment.worst_family`: worst section gap across all languages, the headline figure of Presentation
+  mode, also written in `findings.md` § 0 and the summary tab so it has its evidence.
+- The before / after scenario applies exactly the template fixes of the plan (`scenario.tickets`), with the
+  volume of each step (`scenario.changes`), instead of a separate set of rules.
+- Period of the business data: `--business-period`, or the `# période : ...` line written by `fetch-gsc` and
+  `fetch-ga4` at the top of the CSV; `meta.value_kind` tells a traffic value (clicks, impressions, sessions),
+  which the report labels as such, from a business value (revenue, conversions).
+- Gain texts in French number format ("+0,48 pt").
+- Joining business data, targets and groups uses the same normalisation as the graph: with `--strip-query`, a
+  Search Console URL with `?utm_source=...` or `#anchor` joins its page.
 
-### Tableurs
+### Spreadsheets
 
-- `report.xlsx` toujours produit (`--no-excel` pour s'en passer) : onglets Synthèse, Plan d'action, Pages,
-  Famine, Gouffres, Segments, Flux entre silos, Modèle, Lisez-moi ; en-têtes en français, filtres, volets figés,
-  pourcentages formatés, cellules texte jamais interprétées comme formules. Les CSV restent au format machine
-  (virgule, point décimal) pour `diff` et les autres outils : dans un Excel français, ouvrir le classeur, pas le CSV.
+- `report.xlsx` always produced (`--no-excel` to skip it): summary, action plan, pages, starving pages,
+  overfed pages, segments, flows between silos, model and read-me tabs; French headers, filters, frozen
+  panes, formatted percentages, text cells never interpreted as formulas. The CSVs stay in machine format
+  (comma, decimal point) for `diff` and other tools: in Excel with a decimal-comma locale, open the workbook,
+  not the CSV.
 
-### Projet
+### Project
 
-- Tests automatiques sur GitHub à chaque modification (Linux et Windows, Python 3.11, 3.13 et 3.14), actions épinglées
-  sur un commit exact et droits en lecture seule ; mises à jour Dependabot avec 7 jours de délai.
-- `CONTRIBUTING.md` (installation, tests, conventions, données de test synthétiques seulement) et `SECURITY.md`
-  (signalement privé d'une faille, périmètre).
-- Test du débit du crawler : l'écart entre deux requêtes est mesuré à l'envoi, la durée totale côté serveur ;
-  il ne dépend plus de la charge de la machine.
+- Automatic tests on GitHub on every change (Linux and Windows, Python 3.11, 3.13 and 3.14), actions pinned to
+  an exact commit and read-only permissions; Dependabot updates with a 7-day delay.
+- `CONTRIBUTING.md` (install, tests, conventions, synthetic test data only) and `SECURITY.md` (private
+  vulnerability reporting, scope).
+- Crawler rate test: the gap between two requests is measured when they are sent, the total duration on the
+  server side; it no longer depends on the machine's load.
 
-### Lanceur et serveur local
+### Launcher and local server
 
-- Barre oblique inverse refusée dans les chemins sous `/runs/` sur tous les systèmes (sous Linux, ce n'est pas un
-  séparateur mais un caractère de nom de fichier) : la règle de sécurité est la même partout.
-- Police système dans le lanceur ; CSP des rapports sans aucune origine tierce (le CDN n'est autorisé que pour un
-  rapport produit avec `--cdn`) ; `favicon.ico` répond 204 ; avertissement si une bibliothèque embarquée manque.
-- Liste des analyses limitée aux vrais dossiers d'analyse, message d'erreur sur une adresse vide ou invalide,
-  délai présenté par requête, avertissement sur le budget de pages, erreur claire quand aucune page n'a été
-  récupérée (robots.txt).
+- Backslash refused in paths under `/runs/` on every system (on Linux it is not a separator but a file name
+  character): the security rule is the same everywhere.
+- System font in the launcher; report CSP without any third-party origin (the CDN is only allowed for a
+  report produced with `--cdn`); `favicon.ico` answers 204; warning if an embedded library is missing.
+- List of analyses limited to real analysis folders, error message on an empty or invalid address, delay
+  presented per request, warning on the page budget, clear error when no page could be fetched (robots.txt).
 
 ## 0.4.1 (2026-11-11)
 
-Corrections issues de la relecture indépendante de 0.4.0.
+Fixes from the independent review of 0.4.0.
 
-- Inférence de gabarit : le seuil ne compte que les liens déclarés content / unknown (une page de menu citée
-  trois fois dans un texte garde ses trois liens à plein poids) ; la part affichée est celle qui a décidé.
-- Nombres : un export où une colonne prouve le séparateur de milliers (« 12,345,678 ») est lu entièrement
-  ainsi, et une métrique de comptage « 1,234 » sans décimale à un ou deux chiffres est un millier.
-- `--uncrawled leak` : décidé sur la table d'URL seule, plus jamais sur l'ordre des lignes.
-- Classes : pages légales et de confiance reconnues sur le segment entier (ou un suffixe légal), plus sur un
-  mot en tête de slug ; `/p/` et `/c/` sur le segment entier seulement ; racine d'une langue (`/fr/`) = accueil.
-- Précision : UX-09 (tri, pagination, impression) n'est pas traité ; seul le barème du score l'est.
+- Template inference: the threshold only counts links declared content / unknown (a menu page cited three
+  times in a text keeps its three links at full weight); the share shown is the one that decided.
+- Numbers: an export where one column proves the thousands separator ("12,345,678") is read that way
+  entirely, and a count metric "1,234" without a one- or two-digit decimal part is a thousand.
+- `--uncrawled leak`: decided on the URL table alone, never again on the order of rows.
+- Classes: legal and trust pages recognised on the whole segment (or a legal suffix), no longer on a word
+  at the start of the slug; `/p/` and `/c/` on the whole segment only; root of a language (`/fr/`) = home.
+- Clarification: UX-09 (sorting, paging, printing) is not addressed; only the score scale is.
 
 ## 0.4.0 (2026-11-11)
 
-Version issue d'un audit complet du projet : sécurité du serveur local, fiabilité du conseil, lecture du rapport.
+Version resulting from a full audit of the project: security of the local server, reliability of the
+advice, readability of the report.
 
-### Sécurité
+### Security
 
-- Serveur local (`prgraph serve`) : résolution sûre des chemins sous `/runs/` (plus de traversée par chemin relatif
-  au lecteur Windows `C:..\`), `HEAD` refusé, `POST` acceptés seulement en `application/json`, avec un jeton
-  anti-CSRF émis au démarrage et vérifié sur `X-Prgraph-Token`, contrôle des en-têtes `Origin` et `Host`,
-  `Content-Length` plafonné, erreurs renvoyées en JSON (400 / 500), en-têtes CSP et `nosniff`.
-- Rapport HTML : les données injectées échappent `<`, `>`, `&`, U+2028 et U+2029 ; un titre de page `<!--<script>`
-  ne vide plus le rapport. Les URL insérées dans le DOM sont échappées et limitées à `http(s)`.
-- Lanceur : toutes les valeurs affichées sont échappées.
-- Exports CSV et Excel : les cellules commençant par `=`, `+`, `-`, `@` sont neutralisées (injection de formule).
+- Local server (`prgraph serve`): safe resolution of paths under `/runs/` (no more traversal through a
+  Windows drive-relative path `C:..\`), `HEAD` refused, `POST` accepted only as `application/json`, with an
+  anti-CSRF token issued at start-up and checked on `X-Prgraph-Token`, checks of the `Origin` and `Host`
+  headers, capped `Content-Length`, errors returned as JSON (400 / 500), CSP and `nosniff` headers.
+- HTML report: injected data escapes `<`, `>`, `&`, U+2028 and U+2029; a page title `<!--<script>` no longer
+  empties the report. URLs inserted into the DOM are escaped and limited to `http(s)`.
+- Launcher: every displayed value is escaped.
+- CSV and Excel exports: cells starting with `=`, `+`, `-`, `@` are neutralised (formula injection).
 
-### Modèle et conseil
+### Model and advice
 
-- Classes business décidées sur les segments de chemin, jamais sur des sous-chaînes (`/blog/legal-tech` est un
-  article, `/legal` une page légale) ; nouvelle classe `confiance` (à propos, équipe, presse, FAQ) ; `contact` en money.
-- Inférence de gabarit graduelle (poids `max(gabarit, poids × (1 − part des pages émettrices))`), jamais appliquée
-  aux pages stratégiques ni aux pages money, liste des cibles touchées dans `findings.md` et l'onglet Modèle ;
-  option `--no-boilerplate-inference`.
-- Tickets « gouffre » : le gain affiché est celui de l'action prescrite (liens relégués en pied de page, ou regroupés
-  derrière une page centre légal), plus jamais celui d'une suppression des liens.
-- Une redirection vers un autre hôte est une fuite (`lost_external`), pas un nœud ; les cibles découvertes mais non
-  crawlées sont des fuites par défaut (`--uncrawled leak|nodes`).
-- Le vecteur de téléportation `--restart` est conservé par `simulate`, par le plan d'action et par le what-if du
-  rapport (`meta.teleport`).
-- Score d'alignement : l'accueil est exclu de la distance (clics de marque) ; le pire écart de segment et la
-  corrélation de rang sont affichés à côté du score avec un barème.
-- Trous noirs : seulement des pages réellement alimentées (au moins un lien entrant, PageRank au-dessus de la
-  médiane), jamais des fichiers (PDF, images).
-- Quadrants : plus de « candidates à la suppression » ; « à instruire avec les clics et impressions ».
-- `diff` compare aussi la part d'équité et le rang (le score log 0-100 dépend du minimum et du maximum du site).
-- Nombres : la convention « virgule = milliers » ou « virgule = décimale » est décidée par colonne (`1,234` anglais
-  n'est plus lu 1,234).
-- Efforts des tickets présentés comme des ordres de grandeur par défaut, à confirmer.
+- Business classes decided on path segments, never on substrings (`/blog/legal-tech` is an article, `/legal`
+  a legal page); new `confiance` (trust) class (about, team, press, FAQ); `contact` in money.
+- Graded template inference (weight `max(template, weight × (1 − share of linking pages))`), never applied to
+  strategic or money pages, list of affected targets in `findings.md` and the Model tab; option
+  `--no-boilerplate-inference`.
+- Overfed-page tickets: the gain shown is that of the prescribed action (links moved to the footer, or
+  grouped behind a legal hub page), never that of deleting the links.
+- A redirect to another host is a leak (`lost_external`), not a node; targets found but not crawled are
+  leaks by default (`--uncrawled leak|nodes`).
+- The `--restart` teleportation vector is kept by `simulate`, by the action plan and by the report's what-if
+  (`meta.teleport`).
+- Alignment score: the home page is excluded from the distance (brand clicks); the worst segment gap and the
+  rank correlation are shown next to the score, with a scale.
+- Black holes: only pages that are actually fed (at least one inbound link, PageRank above the median),
+  never files (PDF, images).
+- Quadrants: no more "candidates for deletion"; "to investigate with clicks and impressions".
+- `diff` also compares the equity share and the rank (the log 0-100 score depends on the site's minimum and
+  maximum).
+- Numbers: the "comma = thousands" or "comma = decimal" convention is decided per column (English `1,234` is
+  no longer read as 1.234).
+- Ticket efforts presented as default orders of magnitude, to be confirmed.
 
 ### Crawl
 
-- `robots.txt` : jeton `pagerank-graph` respecté en plus de `*`, 5xx ou erreur réseau = crawl refusé (RFC 9309),
-  URL interdites écrites avec le statut `robots` (jamais supposées en 200), aucun rapport sur un site sans page
-  récupérée ; `stats` distingue `fetched`, `blocked`, `errors`.
-- Délai appliqué par requête quel que soit le nombre de workers (plancher 0,1 s), repli sur 429 et 503 avec
-  `Retry-After`, corps lu en flux et plafonné à 5 Mo, agent `pagerank-graph/<version>`.
-- Sitemap : les URL non crawlées faute de budget sont écrites avec le statut `uncrawled`.
-- `crawl-static` : pages `.html` inventoriées sous leurs deux formes (canonical de l'une vers l'autre), PDF et
-  documents présents en 200, `index.html` retiré en dernier segment seulement, `rel="sponsored"` et `rel="ugc"`
-  traités comme nofollow (fonction commune aux deux crawlers).
+- `robots.txt`: `pagerank-graph` token respected as well as `*`; 5xx or network error = crawl refused (RFC
+  9309); disallowed URLs written with the `robots` status (never assumed to answer 200); no report on a site
+  with no page fetched; `stats` separates `fetched`, `blocked`, `errors`.
+- Delay applied per request whatever the number of workers (floor 0.1 s), back-off on 429 and 503 with
+  `Retry-After`, body read as a stream and capped at 5 MB, `pagerank-graph/<version>` user agent.
+- Sitemap: URLs not crawled for lack of budget are written with the `uncrawled` status.
+- `crawl-static`: `.html` pages listed under both forms (canonical from one to the other), PDFs and documents
+  present answer 200, `index.html` removed only as the last segment, `rel="sponsored"` and `rel="ugc"` treated
+  as nofollow (function shared by both crawlers).
 
-### Sorties
+### Outputs
 
-- `findings.md` : « inatteignable » au lieu de `-1`, matrice des silos limitée aux dix plus gros segments, libellé
-  des zones de gabarit complet, chemins au lieu d'URL complètes, part d'équité (`pr_share_pct`) à côté du score.
-- Erreurs d'entrée rendues en message (position inconnue, `--cap-position` mal formé, poids invalide, arêtes en
-  chemins relatifs, règles de segments ignorées signalées).
+- `findings.md`: "unreachable" instead of `-1`, silo matrix limited to the ten largest segments, full label
+  for template zones, paths instead of full URLs, equity share (`pr_share_pct`) next to the score.
+- Input errors turned into messages (unknown position, malformed `--cap-position`, invalid weight, edges as
+  relative paths, ignored segment rules reported).
 
 ### Tests
 
-- Nouveaux tests : serveur HTTP (traversée, CSRF, jeton, bornes), crawl sur faux site local (robots, débit, 429,
-  rel, sitemap, statique), export (échappement, formules, téléportation), corrections du modèle, version unique.
+- New tests: HTTP server (traversal, CSRF, token, limits), crawl on a fake local site (robots, rate, 429, rel,
+  sitemap, static), export (escaping, formulas, teleportation), model fixes, single version.
 
 ## 0.3.0 (2026-11-10)
 
-- Profils de poids renommés `raisonnable` et `modere` (anciens noms acceptés), licence MIT, publication du dépôt.
+- Weight profiles renamed `raisonnable` and `modere` (former names accepted), MIT license, repository
+  published.
 
 ## 0.2.0 (2026-11-03)
 
-- Pondération par clics observés et composante sémantique, `diff` entre analyses, connecteurs Search Console et GA4.
+- Weighting by observed clicks and semantic component, `diff` between analyses, Search Console and GA4
+  connectors.
