@@ -1,0 +1,29 @@
+# Analyses et données de sites (jamais versionnées : données client)
+runs/
+examples/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Identifiants et environnement
+.env
+*.json.key
+credentials*.json
+service-account*.json
+
+# Système
+.DS_Store
+Thumbs.db
+
+# Construction du paquet
+build/
+dist/
+*.egg-info/
+
+# Configuration locale d'outils
+.claude/

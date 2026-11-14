@@ -1,0 +1,17 @@
+# Propositions de mise à jour des dépendances Python et des actions GitHub, une fois par semaine.
+# Délai de 7 jours après la sortie d'une version : une version compromise est en général retirée avant.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

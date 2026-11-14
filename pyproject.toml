@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pagerank-graph"
+dynamic = ["version"]
+description = "PageRank interne pondéré, alignement business et visualisation en graphe."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "openpyxl>=3.1",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+# Connecteurs Search Console / GA4 (import paresseux, message clair si absents).
+google = [
+    "google-api-python-client>=2.100",
+    "google-analytics-data>=0.18",
+    "google-auth-oauthlib>=1.2",
+]
+test = ["pytest>=8.0", "networkx>=3.0"]
+
+[project.scripts]
+prgraph = "prgraph.cli:main"
+
+[tool.setuptools]
+packages = ["prgraph"]
+
+[tool.setuptools.dynamic]
+version = { attr = "prgraph.__version__" }
+
+[tool.setuptools.package-data]
+# Le visualiseur et le lanceur voyagent avec le paquet : sans eux, report.html et serve échouent.
+prgraph = ["viewer/*.html", "viewer/vendor/*.js", "viewer/vendor/*.txt"]

@@ -1,0 +1,1629 @@
+<!-- prgraph · mode Présentation. Fragment inséré par export.py à la place du marqueur de présentation, juste avant
+     la fermeture du body du rapport. Il lit window.PRGRAPH.data (graph.json), construit un deck 1280 × 720 à la première
+     ouverture et expose window.PRGRAPH_PRESENT = { open(), close() }. Aucune ressource externe, aucune donnée insérée
+     en HTML brut : tout texte passe par textContent. -->
+<style>
+@page slide { size: 1280px 720px; margin: 0; }
+#presentation[hidden] { display: none !important; }
+#presentation {
+  --pr-paper: #f6f5f1; --pr-card: #fcfcfb; --pr-ink: #0b0b0b; --pr-ink-2: #52514e; --pr-ink-3: #66655f; --pr-body: #2b2b29;
+  --pr-line: rgba(11, 11, 11, .13); --pr-grid: #e1e0d9; --pr-base: #c3c2b7; --pr-gray: #898781;
+  --pr-accent: #2a78d6; --pr-accent-ink: #2a78d6; --pr-accent-dk: #6da7ec; --pr-accent-wash: rgba(42, 120, 214, .09); --pr-on-accent: #ffffff;
+  --pr-dark: #141413; --pr-dk-text: #f0efec; --pr-dk-muted: #b9b8b0; --pr-dk-line: rgba(255, 255, 255, .12);
+  --pr-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --pr-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+  position: fixed; inset: 0; z-index: 2147483000; display: flex; flex-direction: column;
+  background: #2b2b29; color: var(--pr-ink); font: 400 16px/1.45 var(--pr-sans); letter-spacing: normal;
+  text-transform: none; text-align: left; color-scheme: light;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+#presentation *, #presentation *::before, #presentation *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Scène : la diapositive 1280 × 720 est mise à l'échelle pour tenir dans la fenêtre */
+#presentation .pr-stage { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: pan-y; }
+#presentation .pr-frame { position: relative; flex: none; overflow: hidden; box-shadow: 0 12px 40px rgba(0, 0, 0, .35); background: var(--pr-paper); }
+#presentation .pr-deck { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; }
+#presentation .slide { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; overflow: hidden; display: none;
+  background: var(--pr-paper); color: var(--pr-ink); padding: 56px 80px 0 128px; outline: none; page: slide; break-after: page; }
+#presentation .slide.is-current { display: block; }
+#presentation .slide > * { position: relative; }
+
+/* Barre de commandes (écran seulement) */
+#presentation .pr-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 16px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  background: #1b1b1a; color: #f0efec; font: 600 14px/1 var(--pr-sans); }
+#presentation .pr-btn { appearance: none; -webkit-appearance: none; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, .2); border-radius: 8px; background: transparent; color: inherit; font: 600 14px/1 var(--pr-sans); cursor: pointer; white-space: nowrap; }
+#presentation .pr-btn:hover { background: rgba(255, 255, 255, .08); }
+#presentation .pr-btn:focus-visible { outline: 2px solid #86b6ef; outline-offset: 2px; }
+#presentation .pr-btn[disabled] { opacity: .35; cursor: default; background: transparent; }
+#presentation .pr-btn svg { width: 16px; height: 16px; flex: none; }
+#presentation .pr-count { min-width: 72px; text-align: center; font: 600 14px/1 var(--pr-sans); font-variant-numeric: tabular-nums; }
+#presentation .pr-spacer { flex: 1 1 auto; }
+@media (max-width: 720px) {
+  #presentation .pr-long { display: none; }
+  #presentation .pr-bar { gap: 6px; padding-left: 10px; padding-right: 10px; }
+  #presentation .pr-btn { padding: 0 11px; }
+  #presentation .pr-count { min-width: 56px; }
+}
+
+/* Grammaire commune des diapositives */
+#presentation .pr-rail { position: absolute; left: 56px; top: 60px; bottom: 96px; width: 32px; }
+#presentation .pr-rail-num { font: 700 14px/1 var(--pr-sans); letter-spacing: .04em; color: var(--pr-accent-ink); }
+#presentation .pr-rail-trait { position: absolute; left: 8px; top: 30px; width: 1px; height: 64px; background: var(--pr-line); }
+#presentation .pr-rail-vert { position: absolute; left: 0; bottom: 0; transform: translateX(14px) rotate(-90deg); transform-origin: left bottom;
+  font: 600 11px/1 var(--pr-sans); letter-spacing: .22em; text-transform: uppercase; color: var(--pr-ink-3); white-space: nowrap; }
+#presentation .pr-eyebrow { font: 600 13px/1 var(--pr-sans); letter-spacing: .18em; text-transform: uppercase; color: var(--pr-accent-ink); margin-bottom: 18px; }
+#presentation .pr-h1, #presentation .pr-h2 { font-family: var(--pr-sans); font-weight: 800; letter-spacing: -.035em; line-height: 1.02; color: var(--pr-ink); text-transform: none; }
+#presentation .pr-h1 { font-size: 76px; max-width: 1040px; margin-top: 6px; }
+#presentation .pr-h1.pr-long-title { font-size: 60px; }
+#presentation .pr-h2 { font-size: 44px; max-width: 1060px; }
+#presentation .pr-h1 em, #presentation .pr-h2 em { font-style: italic; color: var(--pr-accent-ink); }
+#presentation .pr-lead { font: 400 21px/1.5 var(--pr-sans); color: var(--pr-body); max-width: 760px; margin-top: 28px; }
+#presentation .pr-retenir { position: absolute; left: 128px; right: 80px; bottom: 100px; font: 400 18px/1.45 var(--pr-sans); color: var(--pr-ink);
+  padding-left: 16px; border-left: 3px solid var(--pr-accent); }
+#presentation .pr-retenir b { font: 700 12px/1 var(--pr-sans); letter-spacing: .14em; text-transform: uppercase; color: var(--pr-accent-ink); margin-right: 10px; }
+#presentation .pr-petit { position: absolute; left: 128px; right: 80px; bottom: 74px; font: 400 12.5px/1.4 var(--pr-sans); color: var(--pr-ink-3); }
+/* Pile du bas : À retenir, réserve sur la mesure, petite ligne ; elle pousse vers le haut au lieu de se chevaucher */
+#presentation .pr-bas { position: absolute; left: 128px; right: 80px; bottom: 74px; display: flex; flex-direction: column; gap: 10px; }
+#presentation .pr-bas .pr-retenir, #presentation .pr-bas .pr-petit { position: static; }
+#presentation .pr-bas .pr-retenir { margin-bottom: 6px; }
+#presentation .pr-garde { font: 400 14px/1.4 var(--pr-sans); color: var(--pr-ink-2); padding-left: 12px; border-left: 2px solid var(--pr-gray); max-width: 1072px; }
+#presentation .pr-pied { position: absolute; left: 128px; right: 80px; bottom: 30px; display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  font: 600 11px/1.4 var(--pr-sans); letter-spacing: .14em; text-transform: uppercase; color: var(--pr-ink-3); border-top: 1px solid var(--pr-line); padding-top: 12px; }
+#presentation .pr-marque { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#presentation .pr-marque img { height: 20px; width: auto; max-width: 120px; object-fit: contain; display: block; }
+#presentation .pr-marque span { font: 800 12px/1.4 var(--pr-sans); letter-spacing: .06em; color: var(--pr-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#presentation .pr-pied-r { text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+#presentation .pr-k { font: 600 11px/1.3 var(--pr-sans); letter-spacing: .14em; text-transform: uppercase; color: var(--pr-ink-3); }
+
+/* Diapositives sombres (transitions) */
+#presentation .slide.pr-dark { background: var(--pr-dark); color: var(--pr-dk-text); }
+#presentation .slide.pr-dark::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .55;
+  background-image: linear-gradient(var(--pr-dk-line) 1px, transparent 1px), linear-gradient(90deg, var(--pr-dk-line) 1px, transparent 1px); background-size: 80px 80px; }
+#presentation .pr-dark .pr-pied { border-color: var(--pr-dk-line); color: var(--pr-dk-muted); }
+#presentation .pr-dark .pr-marque span { color: var(--pr-dk-text); }
+#presentation .pr-grand { position: absolute; left: 116px; top: 104px; font: 800 300px/.8 var(--pr-sans); letter-spacing: -.06em; color: var(--pr-accent-dk); }
+#presentation .pr-dark .pr-h1 { position: absolute; left: 128px; bottom: 172px; font-size: 88px; color: #ffffff; max-width: 1040px; }
+#presentation .pr-dark .pr-lead { position: absolute; left: 128px; bottom: 116px; margin: 0; color: var(--pr-dk-muted); }
+
+/* Couverture */
+#presentation .pr-couv-bas { position: absolute; left: 128px; right: 80px; bottom: 118px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; }
+#presentation .pr-couv-bas > div { border-top: 1px solid var(--pr-line); padding-top: 14px; min-width: 0; }
+#presentation .pr-couv-bas .pr-k { margin-bottom: 8px; }
+#presentation .pr-couv-v { font: 400 15px/1.45 var(--pr-sans); color: var(--pr-ink); overflow-wrap: anywhere; }
+#presentation .pr-couv-v img { display: block; height: 28px; width: auto; max-width: 180px; object-fit: contain; margin-bottom: 8px; }
+#presentation .pr-provenance { position: absolute; left: 128px; right: 80px; bottom: 74px; font: 400 11px/1.4 var(--pr-sans); color: var(--pr-ink-3); }
+
+/* Sommaire */
+#presentation .pr-sommaire { margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; grid-auto-flow: column; gap: 0 64px; }
+#presentation .pr-ligne { display: grid; grid-template-columns: 70px 1fr auto; align-items: baseline; padding: 34px 0; border-top: 1px solid var(--pr-line); }
+#presentation .pr-ligne-n { font: 800 34px/1 var(--pr-sans); letter-spacing: -.03em; color: var(--pr-accent-ink); }
+#presentation .pr-ligne-t { font: 800 28px/1.1 var(--pr-sans); letter-spacing: -.03em; color: var(--pr-ink); }
+#presentation .pr-ligne-d { display: block; font: 400 15px/1.4 var(--pr-sans); letter-spacing: 0; color: var(--pr-ink-2); margin-top: 6px; }
+#presentation .pr-ligne-p { font: 600 13px/1 var(--pr-sans); letter-spacing: .12em; color: var(--pr-ink-2); }
+
+/* Tuiles du verdict */
+#presentation .pr-tuiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 40px; }
+#presentation .pr-tuile { background: var(--pr-card); border: 1px solid var(--pr-line); padding: 26px 26px 22px; min-height: 326px; display: flex; flex-direction: column; min-width: 0; }
+#presentation .pr-tuile-nom { font: 700 17px/1.25 var(--pr-mono); color: var(--pr-ink); margin-top: 12px; overflow-wrap: anywhere; }
+#presentation .pr-tuile-nom.pr-nom-texte { font: 700 17px/1.25 var(--pr-sans); }
+#presentation .pr-big { font: 800 72px/1 var(--pr-sans); letter-spacing: -.045em; color: var(--pr-ink); margin-top: 14px; }
+#presentation .pr-big small { font-size: 26px; font-weight: 700; letter-spacing: -.02em; color: var(--pr-ink-2); margin-left: 4px; }
+#presentation .pr-sub { font: 400 16px/1.4 var(--pr-sans); color: var(--pr-body); margin-top: 10px; }
+#presentation .pr-statut { display: flex; align-items: center; gap: 10px; margin-top: 14px; font: 700 18px/1 var(--pr-sans); color: var(--pr-ink); }
+#presentation .pr-statut svg { width: 22px; height: 22px; flex: none; }
+#presentation .pr-e { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--pr-line); font: 400 13.5px/1.4 var(--pr-sans); color: var(--pr-ink-3); }
+
+/* Graphiques */
+#presentation .pr-legende { display: flex; flex-wrap: wrap; gap: 8px 24px; font: 400 13.5px/1.3 var(--pr-sans); color: var(--pr-ink-2); margin-top: 26px; }
+#presentation .pr-legende span { display: inline-flex; align-items: center; gap: 8px; }
+#presentation .pr-legende i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; flex: none; }
+#presentation .pr-chart { margin-top: 12px; display: block; }
+#presentation .pr-chart svg, #presentation .pr-carte svg { display: block; overflow: visible; }
+#presentation .pr-carte { margin-top: 8px; }
+
+/* Gabarit */
+#presentation .pr-gab { display: grid; grid-template-columns: 1.3fr 1fr; gap: 56px; margin-top: 30px; align-items: end; }
+#presentation .pr-hero-n { font: 800 164px/.9 var(--pr-sans); letter-spacing: -.05em; color: var(--pr-accent-ink); }
+#presentation .pr-hero p { font: 400 20px/1.4 var(--pr-sans); color: var(--pr-body); max-width: 600px; margin-top: 16px; }
+#presentation .pr-appel { border-left: 3px solid var(--pr-accent); padding: 4px 0 4px 18px; margin-top: 22px; }
+#presentation .pr-appel:first-child { margin-top: 0; }
+#presentation .pr-appel-v { font: 800 44px/1 var(--pr-sans); letter-spacing: -.04em; color: var(--pr-ink); }
+#presentation .pr-appel p { font: 400 15.5px/1.4 var(--pr-sans); color: var(--pr-body); margin-top: 6px; }
+#presentation .pr-segbar { margin-top: 64px; }
+
+/* Cartes (pages mal reliées) */
+#presentation .pr-cartes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 30px; }
+#presentation .pr-fiche { background: var(--pr-card); border: 1px solid var(--pr-line); padding: 22px 18px 18px; min-height: 380px; display: flex; flex-direction: column; min-width: 0; }
+#presentation .pr-fiche-v { font: 800 44px/1 var(--pr-sans); letter-spacing: -.04em; color: var(--pr-ink); }
+#presentation .pr-fiche-u { font: 400 13px/1.3 var(--pr-sans); color: var(--pr-ink-2); margin-top: 6px; }
+#presentation .pr-chemin { font: 600 13.5px/1.35 var(--pr-mono); color: var(--pr-ink); margin-top: 18px; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+#presentation .pr-titre-page { font: italic 400 13px/1.35 var(--pr-sans); color: var(--pr-ink-3); margin-top: 8px;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+#presentation .pr-fiche-pied { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--pr-line); display: grid; grid-template-columns: 1fr; gap: 10px; }
+#presentation .pr-stat-k { font: 600 10px/1.25 var(--pr-sans); letter-spacing: .12em; text-transform: uppercase; color: var(--pr-ink-3); }
+#presentation .pr-stat-v { font: 700 17px/1.1 var(--pr-sans); color: var(--pr-ink); margin-top: 5px; }
+#presentation .pr-chapo { font: 400 19px/1.4 var(--pr-sans); color: var(--pr-body); max-width: 1000px; margin-top: 14px; }
+#presentation .pr-chapo b { font-weight: 800; color: var(--pr-ink); }
+
+/* Plan d'action */
+#presentation .pr-etapes { display: grid; gap: 14px; margin-top: 30px; }
+#presentation .pr-etape { background: var(--pr-card); border: 1px solid var(--pr-line); padding: 22px 20px 18px; min-height: 384px; display: flex; flex-direction: column; min-width: 0; }
+#presentation .pr-etape-tete { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#presentation .pr-etape-n { font: 800 32px/1 var(--pr-sans); letter-spacing: -.03em; color: var(--pr-accent-ink); }
+#presentation .pr-chip { font: 700 10.5px/1 var(--pr-sans); letter-spacing: .12em; text-transform: uppercase; padding: 6px 9px; border-radius: 999px; white-space: nowrap; }
+#presentation .pr-chip-gabarit { background: var(--pr-accent); color: var(--pr-on-accent); }
+#presentation .pr-chip-edito { border: 1px solid var(--pr-accent-ink); color: var(--pr-accent-ink); }
+#presentation .pr-etape-id { font: 600 11px/1.3 var(--pr-mono); letter-spacing: .04em; color: var(--pr-ink-3); margin-top: 8px; }
+#presentation .pr-etape-t { font: 800 19px/1.18 var(--pr-sans); letter-spacing: -.02em; color: var(--pr-ink); margin-top: 10px; text-transform: none; }
+#presentation .pr-etape .pr-chemin { margin-top: 10px; font-size: 12.5px; -webkit-line-clamp: 2; }
+#presentation .pr-pourquoi { font: 400 14px/1.4 var(--pr-sans); color: var(--pr-body); margin-top: 10px; }
+#presentation .pr-saura { margin-top: auto; padding-top: 12px; border-top: 1px solid var(--pr-line); font: 400 13.5px/1.4 var(--pr-sans); color: var(--pr-ink-2); }
+#presentation .pr-saura b { display: block; font: 700 10px/1.4 var(--pr-sans); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-ink-3); margin-bottom: 7px; }
+
+/* Avant / après */
+#presentation .pr-duo { display: grid; grid-template-columns: 1fr 64px 1fr; margin-top: 28px; align-items: stretch; }
+#presentation .pr-col { background: var(--pr-card); border: 1px solid var(--pr-line); padding: 22px 28px 10px; }
+#presentation .pr-col.pr-apres { border: 2px solid var(--pr-accent); }
+#presentation .pr-col.pr-apres.pr-baisse { border-color: var(--pr-ink-3); }
+#presentation .pr-col-t { font: 700 12px/1.3 var(--pr-sans); letter-spacing: .16em; text-transform: uppercase; color: var(--pr-ink-3); margin-bottom: 8px; }
+#presentation .pr-apres .pr-col-t { color: var(--pr-accent-ink); }
+#presentation .pr-apres.pr-baisse .pr-col-t { color: var(--pr-ink-3); }
+#presentation .pr-metrique { padding: 13px 0; border-top: 1px solid var(--pr-line); }
+#presentation .pr-metrique:first-of-type { border-top: 0; }
+#presentation .pr-m-k { font: 400 14px/1.3 var(--pr-sans); color: var(--pr-ink-2); }
+#presentation .pr-m-v { font: 800 38px/1 var(--pr-sans); letter-spacing: -.035em; color: var(--pr-ink); margin-top: 6px; }
+#presentation .pr-m-v span { font: 700 15px/1 var(--pr-sans); letter-spacing: 0; color: var(--pr-accent-ink); margin-left: 12px; }
+#presentation .pr-m-v span.pr-neutre { color: var(--pr-ink-2); }
+#presentation .pr-fleche { display: flex; align-items: center; justify-content: center; }
+#presentation .pr-changes { font: 400 15px/1.45 var(--pr-sans); color: var(--pr-body); margin-top: 18px; max-width: 1072px; }
+#presentation .pr-changes b { font-weight: 700; color: var(--pr-ink); }
+
+/* Levier éditorial (avant / après négligeable) */
+#presentation .pr-levier { display: grid; grid-template-columns: 330px 1fr 380px; align-items: center; margin-top: 48px; }
+#presentation .pr-source { background: var(--pr-card); border: 1px solid var(--pr-line); padding: 20px 20px; margin-top: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+#presentation .pr-source:first-child { margin-top: 0; }
+#presentation .pr-source-n { font: 700 18px/1.2 var(--pr-sans); color: var(--pr-ink); overflow-wrap: anywhere; }
+#presentation .pr-source-v { font: 800 26px/1 var(--pr-sans); letter-spacing: -.02em; color: var(--pr-ink); white-space: nowrap; }
+#presentation .pr-cible { background: var(--pr-card); border: 2px solid var(--pr-accent); padding: 28px 30px 30px; }
+#presentation .pr-cible-nom { font: 700 26px/1.2 var(--pr-mono); color: var(--pr-ink); margin-top: 10px; overflow-wrap: anywhere; }
+#presentation .pr-cible-l { display: flex; align-items: baseline; gap: 12px; margin-top: 14px; font: 400 16px/1.3 var(--pr-sans); color: var(--pr-body); }
+#presentation .pr-cible-l b { font: 800 48px/1 var(--pr-sans); letter-spacing: -.035em; color: var(--pr-ink); min-width: 96px; }
+
+/* Méthode */
+#presentation .pr-methode { list-style: none; margin-top: 32px; display: grid; gap: 15px; max-width: 1040px; }
+#presentation .pr-methode li { font: 400 16.5px/1.45 var(--pr-sans); color: var(--pr-body); padding-left: 22px; position: relative; }
+#presentation .pr-methode li::before { content: ""; position: absolute; left: 0; top: 8px; width: 8px; height: 8px; background: var(--pr-accent); }
+#presentation .pr-methode b { font-weight: 700; color: var(--pr-ink); }
+
+/* Impression : une diapositive par page, couleurs conservées, commandes masquées */
+@media print {
+  html:has(> body[data-mode="presentation"]) { height: auto !important; overflow: visible !important; background: #ffffff !important; }
+  body[data-mode="presentation"] { margin: 0 !important; padding: 0 !important; display: block !important; height: auto !important; overflow: visible !important; background: #ffffff !important; }
+  body[data-mode="presentation"] > *:not(#presentation) { display: none !important; }
+  body[data-mode="presentation"] #presentation { position: static !important; display: block !important; background: none !important; }
+  body[data-mode="presentation"] #presentation .pr-bar { display: none !important; }
+  body[data-mode="presentation"] #presentation .pr-stage,
+  body[data-mode="presentation"] #presentation .pr-frame,
+  body[data-mode="presentation"] #presentation .pr-deck { display: block !important; position: static !important; width: auto !important; height: auto !important;
+    transform: none !important; overflow: visible !important; box-shadow: none !important; background: none !important; }
+  body[data-mode="presentation"] #presentation .slide { display: block !important; position: relative !important; page: slide; break-after: page; break-inside: avoid; }
+  body[data-mode="presentation"] #presentation .slide:last-child { break-after: auto; }
+}
+</style>
+<div id="presentation" hidden aria-label="Présentation"></div>
+<script>
+(function () {
+  'use strict';
+
+  // ── Constantes ──────────────────────────────────────────────────────────────
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  var SW = 1280, SH = 720;
+  var CW = 1072;                       // largeur utile d'une diapositive (1280 - 128 - 80)
+  // Palette catégorielle validée (ordre fixe, jamais recyclée) ; « autres » en gris
+  var PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#6250d6'];
+  var OTHER = '#898781';
+  // Couleurs de statut réservées : toujours accompagnées d'une icône et d'un libellé
+  var STATUS = { bon: '#0ca30c', corriger: '#fab219', serieux: '#ec835a', critique: '#d03b3b' };
+  var PAPER = '#f6f5f1', DARK = '#141413', INK = '#0b0b0b', INK2 = '#52514e', GRID = '#e1e0d9', BASE = '#c3c2b7';
+  var DEFAULT_ACCENT = '#2a78d6';
+  var NEUTRAL = '#8f8e88';             // gris des barres « valeur », « texte des pages » et des flèches neutres
+  var TEMPLATE_ZONES = ['header', 'nav', 'footer', 'sidebar', 'boilerplate'];
+  var DEFAULT_FIELDS = ['url', 'seg', 'pr', 'score', 'chei', 'cscore', 'indeg', 'outdeg', 'depth', 'value', 'flags', 'quadrant', 'title', 'leak', 'demand', 'cls'];
+  var MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  // Position de lien précédée de son article, pour les titres d'action
+  var POS_ART = { header: 'l’en‑tête', nav: 'le menu', sidebar: 'la barre latérale', footer: 'le pied de page', boilerplate: 'les blocs répétés' };
+  var POS_LABEL = { content: 'texte', breadcrumb: 'fil d’Ariane', sidebar: 'barre latérale', header: 'en-tête', nav: 'menu', footer: 'pied de page',
+    boilerplate: 'blocs répétés', unknown: 'non classé' };
+  // Unités de la colonne de valeur, dans les mots du client : [singulier, pluriel]
+  var UNITS = {
+    clicks: ['clic depuis Google', 'clics depuis Google'], clics: ['clic depuis Google', 'clics depuis Google'],
+    impressions: ['affichage dans Google', 'affichages dans Google'], sessions: ['visite', 'visites'],
+    conversions: ['conversion', 'conversions'], leads: ['demande', 'demandes'],
+    revenue: ['de chiffre d’affaires', 'de chiffre d’affaires'], revenu: ['de chiffre d’affaires', 'de chiffre d’affaires'],
+    ca: ['de chiffre d’affaires', 'de chiffre d’affaires'], backlinks: ['lien externe', 'liens externes']
+  };
+  // La mesure de référence nommée par ce qu'elle est (jamais « la valeur » seule pour du trafic) :
+  // the = sujet, of = complément de part (« 60 % des clics »), few = après « peu » ou « le plus », made = verbe
+  // de « là où se font… », short = nom court des titres. generic = colonne inconnue, nommée « valeur ».
+  function measure(the, of, few, made, short) { return { the: the, of: of, few: few, made: made, short: short, generic: false }; }
+  var M_CLICKS = measure('les clics depuis Google', 'des clics depuis Google', 'de clics depuis Google', 'se font', 'les clics');
+  var M_REVENUE = measure('le chiffre d’affaires', 'du chiffre d’affaires', 'de chiffre d’affaires', 'se fait', 'le chiffre d’affaires');
+  var MEASURES = {
+    clicks: M_CLICKS, clics: M_CLICKS,
+    impressions: measure('les affichages dans Google', 'des affichages dans Google', 'd’affichages dans Google', 'se font', 'les affichages'),
+    sessions: measure('les visites', 'des visites', 'de visites', 'se font', 'les visites'),
+    conversions: measure('les conversions', 'des conversions', 'de conversions', 'se font', 'les conversions'),
+    leads: measure('les demandes', 'des demandes', 'de demandes', 'se font', 'les demandes'),
+    revenue: M_REVENUE, revenu: M_REVENUE, ca: M_REVENUE,
+    backlinks: measure('les liens externes', 'des liens externes', 'de liens externes', 'arrivent', 'les liens externes')
+  };
+  var M_TRAFFIC = measure('le trafic mesuré', 'du trafic mesuré', 'de trafic mesuré', 'se fait', 'le trafic');
+  var M_VALUE = { the: 'la valeur', of: 'de la valeur', few: 'de valeur', made: 'se fait', short: 'la valeur', generic: true };
+  var M_TARGET = { the: 'la cible', of: 'de la cible', few: 'de cible', made: 'se fait', short: 'la cible', generic: true };
+  var TRAFFIC_COLS = /^(clicks|clics|impressions|sessions)$/i;
+  // Une part de l'autorité calculée par classes d'adresse (money + acquisition) : jamais « ce qui rapporte »
+  var PRODUCTIVE_LABEL = 'pages de vente et de contenu (classées par leur adresse)';
+  var NUM_WORDS = ['', 'un', 'deux', 'trois', 'quatre', 'cinq'];
+
+  var root = document.getElementById('presentation');
+  if (!root) return;
+
+  var state = { built: false, open: false, slides: [], current: 0, modeSetByMe: false, stage: null, frame: null, deck: null,
+    counter: null, prev: null, next: null, pointer: null };
+
+  // ── Petits outils DOM (jamais d'insertion HTML brute) ─────────────────────
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = String(text);
+    return e;
+  }
+  function add(parent) {
+    for (var i = 1; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      parent.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+    }
+    return parent;
+  }
+  function sv(tag, attrs, style) {
+    var e = document.createElementNS(SVGNS, tag);
+    if (attrs) for (var k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k) && attrs[k] != null) e.setAttribute(k, String(attrs[k]));
+    if (style) for (var p in style) if (Object.prototype.hasOwnProperty.call(style, p)) e.style.setProperty(p, String(style[p]));
+    return e;
+  }
+  function svText(x, y, text, attrs, style) {
+    var a = { x: r1(x), y: r1(y) };
+    if (attrs) for (var k in attrs) a[k] = attrs[k];
+    var t = sv('text', a, style);
+    t.textContent = String(text);
+    return t;
+  }
+  function tip(node, text) { var t = sv('title'); t.textContent = String(text); node.appendChild(t); return node; }
+  function r1(x) { return Math.round(x * 10) / 10; }
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
+  function num(x) { var v = Number(x); return isFinite(v) ? v : 0; }
+  function isNum(x) { return typeof x === 'number' && isFinite(x); }
+
+  // ── Formats français ──────────────────────────────────────────────────────
+  var NNBSP = ' ', NBSP = ' ';
+  function fmtNum(x, d) {
+    var v = Number(x);
+    if (!isFinite(v)) return 'n/a';
+    var s = Math.abs(v).toFixed(d || 0);
+    var parts = s.split('.');
+    var out = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, NNBSP) + (parts[1] ? ',' + parts[1] : '');
+    return (v < 0 && Number(s) !== 0 ? '−' : '') + out;
+  }
+  function fmtVal(x) { var v = num(x); return fmtNum(v, Math.abs(v) < 10 && Math.round(v) !== v ? 1 : 0); }
+  function pct(x, d) { return fmtNum(100 * num(x), d) + NBSP + '%'; }
+  // Part lisible : une décimale sous 10 %, entier au-dessus
+  function pctA(x) {
+    var v = 100 * num(x);
+    if (v === 0) return '0' + NBSP + '%';
+    if (Math.abs(v) < 9.95) return fmtNum(v, 1).replace(/,0$/, '') + NBSP + '%';
+    return fmtNum(v, 0) + NBSP + '%';
+  }
+  // Part arrondie à l'entier (titres et tuiles), une décimale si l'entier vaudrait 0
+  function pctI(x) { var v = 100 * num(x); return (v > 0 && v < 0.95 ? fmtNum(v, 1) : fmtNum(v, 0)) + NBSP + '%'; }
+  function frDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return '';
+    var day = Number(m[3]), mo = Number(m[2]) - 1;
+    if (mo < 0 || mo > 11) return '';
+    return (day === 1 ? '1er' : String(day)) + ' ' + MONTHS[mo] + ' ' + m[1];
+  }
+  function plural(n, one, many) { return Math.abs(num(n)) >= 2 ? many : one; }
+  function nPages(n) { return fmtNum(n) + ' ' + plural(n, 'page', 'pages'); }
+  function cap1(s) { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+  function clean(s, max) { return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, max || 200); }
+  function shorten(s, max) {
+    s = String(s == null ? '' : s);
+    if (s.length <= max) return s;
+    var a = Math.ceil((max - 1) * 0.62), b = max - 1 - a;
+    return s.slice(0, a) + '…' + s.slice(s.length - b);
+  }
+  function firstSentence(s, max) {
+    var t = clean(s, 400);
+    var m = /^(.+?[.;:])(\s|$)/.exec(t);
+    return shorten(m ? m[1].replace(/[;:]$/, '.') : t, max || 120);
+  }
+  function pathOf(url) {
+    var s = String(url == null ? '' : url);
+    var m = /^[a-z][a-z0-9+.-]*:\/\/[^\/?#]*/i.exec(s);
+    var p = m ? s.slice(m[0].length) : s;
+    return p || '/';
+  }
+  function hostOf(url) { var m = /^[a-z][a-z0-9+.-]*:\/\/([^\/?#]*)/i.exec(String(url == null ? '' : url)); return m ? m[1] : ''; }
+
+  // ── Couleurs (contraste WCAG, mélange) ─────────────────────────────────────
+  function hexRgb(h) {
+    var s = String(h).replace('#', '');
+    if (s.length === 3) s = s.charAt(0) + s.charAt(0) + s.charAt(1) + s.charAt(1) + s.charAt(2) + s.charAt(2);
+    return [parseInt(s.slice(0, 2), 16), parseInt(s.slice(2, 4), 16), parseInt(s.slice(4, 6), 16)];
+  }
+  function rgbHex(c) { return '#' + c.map(function (v) { var x = Math.max(0, Math.min(255, Math.round(v))).toString(16); return x.length < 2 ? '0' + x : x; }).join(''); }
+  function lum(h) {
+    return hexRgb(h).map(function (v) { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); })
+      .reduce(function (acc, v, i) { return acc + v * [0.2126, 0.7152, 0.0722][i]; }, 0);
+  }
+  function contrast(a, b) { var la = lum(a), lb = lum(b); return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05); }
+  function mix(a, b, t) { var x = hexRgb(a), y = hexRgb(b); return rgbHex(x.map(function (v, i) { return v + (y[i] - v) * t; })); }
+  function towards(c, target, bg, ratio) { var out = c, t = 0; while (contrast(out, bg) < ratio && t < 1) { t += 0.05; out = mix(c, target, t); } return out; }
+  function inkOn(fill) { return contrast('#ffffff', fill) >= 3 ? '#ffffff' : INK; }
+
+  // ── Lecture des données ───────────────────────────────────────────────────
+  function readBrand(b) {
+    var out = { name: null, logo: null, color: null };
+    if (!b || typeof b !== 'object') return out;
+    if (typeof b.name === 'string' && b.name.trim()) out.name = clean(b.name, 80);
+    // Logo : uniquement une image embarquée (data URI), jamais une adresse distante
+    if (typeof b.logo === 'string' && /^data:image\/(png|jpe?g|gif|webp|svg\+xml)[;,]/i.test(b.logo)) out.logo = b.logo;
+    if (typeof b.color === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(b.color.trim())) out.color = rgbHex(hexRgb(b.color.trim()));
+    return out;
+  }
+
+  function context(d) {
+    var meta = d.meta || {};
+    var C = { d: d, meta: meta };
+    C.nodes = Array.isArray(d.nodes) ? d.nodes : [];
+    C.fi = {};
+    (Array.isArray(meta.node_fields) ? meta.node_fields : DEFAULT_FIELDS).forEach(function (f, i) { C.fi[f] = i; });
+    var home = isNum(meta.home) ? meta.home : 0;
+    C.host = hostOf(field(C, home, 'url')) || hostOf(field(C, 0, 'url'));
+    C.site = clean(meta.site, 60) || C.host || 'votre site';
+    C.brand = readBrand(meta.brand);
+    C.date = frDate(meta.generated);
+    C.version = clean(meta.tool_version, 20);
+    C.nPages = isNum(meta.n_nodes) ? meta.n_nodes : C.nodes.length;
+    C.nLinks = isNum(meta.n_edges) ? meta.n_edges : (Array.isArray(d.edges) ? d.edges.length : 0);
+    C.valueCol = typeof meta.value_col === 'string' && meta.value_col ? meta.value_col : null;
+    var u = C.valueCol ? (UNITS[C.valueCol.toLowerCase()] || ['en « ' + clean(C.valueCol, 30) + ' »', 'en « ' + clean(C.valueCol, 30) + ' »']) : null;
+    C.unit = function (n) { return u ? (Math.abs(num(n)) >= 2 ? u[1] : u[0]) : ''; };
+    C.unitPlural = u ? u[1].replace(/^de /, '').replace(/^en /, '') : '';
+    // Nature de la mesure : « trafic » (clics, affichages, visites : les pages de conversion en captent peu) ou
+    // « business » (ventes, conversions). Lue dans meta.value_kind, déduite de la colonne à défaut.
+    var vk = meta.value_kind;
+    C.kind = !C.valueCol ? null : (vk === 'trafic' || vk === 'business' ? vk : (TRAFFIC_COLS.test(C.valueCol) ? 'trafic' : 'business'));
+    C.traffic = C.kind === 'trafic';
+    C.v = !C.valueCol ? M_TARGET : (MEASURES[C.valueCol.toLowerCase()] || (C.traffic ? M_TRAFFIC : M_VALUE));
+    C.period = C.valueCol && typeof meta.value_period === 'string' && meta.value_period.trim() ? clean(meta.value_period, 80) : null;
+    C.measureText = C.valueCol ? C.unitPlural + ', ' + (C.period || 'période non précisée') : '';
+    C.al = d.alignment && typeof d.alignment === 'object' ? d.alignment : null;
+    C.families = Array.isArray(d.families) ? d.families.filter(function (f) { return f && typeof f === 'object'; }) : [];
+    C.segments = Array.isArray(d.segments) ? d.segments : [];
+    // Le pire écart se lit à l'échelle de la rubrique (toutes langues) : alignment.worst_family, le chiffre que
+    // findings.md et le classeur écrivent aussi. Repli : le même calcul sur les familles, puis le pire segment.
+    C.ws = null;
+    if (C.valueCol) {
+      var awf = C.al && C.al.worst_family && typeof C.al.worst_family === 'object' && C.al.worst_family.family != null ? C.al.worst_family : null;
+      if (awf && isNum(awf.pr_share) && isNum(awf.value_share)) {
+        var fo = null;
+        C.families.forEach(function (f) { if (!fo && String(f.name) === String(awf.family)) fo = f; });
+        C.ws = { segment: String(awf.family), pr_share: awf.pr_share, value_share: awf.value_share,
+          family: famRef(String(awf.family), Array.isArray(awf.segments) ? awf.segments : null, Array.isArray(awf.langs) ? awf.langs : null, fo) };
+      } else {
+        var wf = null;
+        C.families.forEach(function (f) {
+          if (!f || f.name === 'autres' || f.name === 'accueil') return;
+          var g = num(f.value_share) - num(f.pr_share);
+          if (g > 0 && (!wf || g > num(wf.value_share) - num(wf.pr_share))) wf = f;
+        });
+        if (wf) C.ws = { segment: String(wf.name), pr_share: num(wf.pr_share), value_share: num(wf.value_share), family: famRef(String(wf.name), null, null, wf) };
+      }
+    }
+    if (!C.ws && C.al && C.al.worst_segment && C.al.worst_segment.segment != null) C.ws = C.al.worst_segment;
+    // Les pages qui portent la valeur : celles qui cumulent 80 % de la valeur mesurée. Seule mesure qui
+    // mérite « les pages qui font la valeur » (productive_share décrit des types d'adresses).
+    C.vp = null;
+    if (C.valueCol && C.al && isNum(C.al.value_pages_pr_share) && isNum(C.al.value_pages_count) && C.al.value_pages_count > 0)
+      C.vp = { pr: C.al.value_pages_pr_share, n: C.al.value_pages_count,
+        share: isNum(C.al.value_pages_value_share) && C.al.value_pages_value_share > 0 ? C.al.value_pages_value_share : 0.8 };
+    // Source des liens : un crawl de l'outil lit le HTML servi sans rendu JavaScript ; un export dépend de son outil
+    var ls = String(meta.links_source || meta.edges_source || meta.edge_format || '').toLowerCase();
+    C.linksFrom = /crawl/.test(ls) ? 'crawl' : (/export|screaming|frog|generic|csv|fichier/.test(ls) ? 'export' : null);
+    C.scen = scenarioState(C, d);
+    C.wsSeg = null;
+    if (C.ws && !C.ws.family) C.segments.forEach(function (s) { if (s && String(s.name) === String(C.ws.segment)) C.wsSeg = s; });
+    // Zones : part de la masse transportée par position de lien, rapportée au total des zones
+    var z = d.zones && typeof d.zones === 'object' ? d.zones : null;
+    var ztot = 0;
+    if (z) for (var k in z) if (Object.prototype.hasOwnProperty.call(z, k)) ztot += Math.max(0, num(z[k]));
+    C.zones = z && ztot > 0 ? z : null;
+    C.ztot = ztot;
+    if (C.zones) {
+      C.tmplShare = TEMPLATE_ZONES.reduce(function (a, k) { return a + Math.max(0, num(z[k])); }, 0) / ztot;
+      C.contentShare = Math.max(0, num(z.content)) / ztot;
+    }
+    C.waste = C.al && isNum(C.al.waste_share) ? C.al.waste_share : null;
+    C.legalCount = C.al && C.al.counts && isNum(C.al.counts.legal_support) ? C.al.counts.legal_support : null;
+    C.starvingTotal = C.segments.reduce(function (a, s) { return a + Math.max(0, num(s && s.starving)); }, 0);
+    C.srcCrawl = 'Source : crawl du site';
+    C.srcValue = C.valueCol ? C.srcCrawl + ' et ' + C.unitPlural : C.srcCrawl;
+    C.footLeft = C.brand.name || ('Maillage interne · ' + C.site);
+    return C;
+  }
+  function field(C, i, name) { var r = C.nodes[i]; var k = C.fi[name]; return r && k != null ? r[k] : undefined; }
+  function nodeObj(C, i) {
+    if (!isNum(i) || !C.nodes[i]) return null;
+    var o = { index: i };
+    for (var k in C.fi) if (Object.prototype.hasOwnProperty.call(C.fi, k)) o[k] = C.nodes[i][C.fi[k]];
+    return o;
+  }
+  function prRank(C, i) {
+    var p = num(field(C, i, 'pr')), r = 1, k = C.fi.pr;
+    for (var j = 0; j < C.nodes.length; j++) if (num(C.nodes[j][k]) > p) r++;
+    return r;
+  }
+
+  // Libellés de rubriques et de segments, dans les mots du client
+  function famLabel(name) {
+    var s = clean(name, 40);
+    if (s === 'racine') return 'premier niveau';
+    if (s === 'autres') return 'autres rubriques';
+    return shorten(s, 22);
+  }
+  function famPhrase(name) {
+    var s = clean(name, 40);
+    if (s === 'racine') return 'de premier niveau';
+    if (s === 'accueil') return 'd’accueil';
+    if (s === 'autres') return 'des autres rubriques';
+    return shorten(s, 26);
+  }
+  function segName(name) {
+    var s = clean(name, 60);
+    if (s === 'accueil') return 'accueil';
+    if (s === 'racine') return 'pages de premier niveau';
+    if (s === 'autres') return 'autres pages';
+    var m = /^([a-z]{2}(?:-[a-z]{2})?)\/(racine|autres)$/i.exec(s);
+    if (m) return '/' + m[1] + '/ (' + (m[2] === 'racine' ? 'premier niveau' : 'autres pages') + ')';
+    if (/^[\w.~%-]+(\/[\w.~%-]+)*$/.test(s)) return shorten('/' + s + '/', 34);
+    return shorten(s, 34);
+  }
+  function segIn(name) {
+    var s = clean(name, 60);
+    if (s === 'accueil') return 'sur l’accueil';
+    if (s === 'racine') return 'dans les pages de premier niveau';
+    if (s === 'autres') return 'dans les autres pages';
+    return 'dans ' + segName(s);
+  }
+  function famColor(f) { return f && isNum(f.slot) && f.slot >= 0 && f.slot < PALETTE.length ? PALETTE[f.slot] : OTHER; }
+  // Rubrique du pire écart : nom, segments et langues (de alignment.worst_family, sinon de la famille), pages.
+  function famRef(name, segs, langs, entry) {
+    return { name: name, segments: (segs || (entry && Array.isArray(entry.segments) ? entry.segments : [])).map(String),
+      langs: langs || (entry && Array.isArray(entry.langs) ? entry.langs : []), pages: entry && isNum(entry.pages) ? entry.pages : null, entry: entry || null };
+  }
+  function isWsFam(C, f) { return !!(f && C.ws && C.ws.family && String(f.name) === C.ws.family.name); }
+  // Sujet singulier pour une phrase : « la rubrique /blog/, toutes langues confondues, » (jamais deux parenthèses)
+  function wsSubject(C) {
+    var f = C.ws && C.ws.family, nm = f ? f.name : (C.ws ? String(C.ws.segment) : '');
+    if (nm === 'accueil') return 'l’accueil';
+    if (nm === 'racine') return 'l’ensemble des pages de premier niveau';
+    if (nm === 'autres') return 'l’ensemble des autres pages';
+    if (!f) return 'le segment ' + segName(nm);
+    return 'la rubrique ' + segName(nm) + (Array.isArray(f.langs) && f.langs.length ? ', toutes langues confondues,' : '');
+  }
+  // « qui font des clics depuis Google » ; « qui rapportent » pour une valeur business non nommée
+  function doing(C, n) {
+    var pl = Math.abs(num(n)) >= 2;
+    if (C.v.generic) return C.kind === 'business' ? (pl ? 'qui rapportent' : 'qui rapporte') : (pl ? 'qui ont de la valeur' : 'qui a de la valeur');
+    return (pl ? 'qui font ' : 'qui fait ') + C.v.of;
+  }
+  function doingMost(C) { return C.v.generic && C.kind === 'business' ? 'qui rapportent le plus' : 'qui font le plus ' + C.v.few; }
+  function pct2(x) { var v = 100 * num(x); return fmtNum(v, Math.abs(v) < 10 ? 2 : 1) + NBSP + '%'; }
+  // « Les 149 pages qui font 80 % des clics depuis Google » (+ « reçoivent 4 % de l’autorité »)
+  function vpSubject(C) {
+    var vp = C.vp;
+    return (vp.n === 1 ? 'La page qui fait ' : 'Les ' + fmtNum(vp.n) + ' pages qui font ') + pctI(vp.share) + ' ' + C.v.of;
+  }
+  function vpSentence(C) { return vpSubject(C) + (C.vp.n === 1 ? ' reçoit ' : ' reçoivent ') + pctA(C.vp.pr) + ' de l’autorité.'; }
+  // Réserve obligatoire sous toute lecture d'une mesure de trafic
+  function trafficCaveat(C) {
+    return 'Les pages de conversion (démo, tarifs, solutions) reçoivent peu ' + C.v.few +
+      ' : cette mesure les sous-estime, elle ne dit pas qu’elles ne rapportent pas.';
+  }
+  // Part de pages de classe money par rubrique (index de C.families), d'après les nœuds exportés
+  function moneyShareByFamily(C) {
+    var classes = Array.isArray(C.meta.classes) ? C.meta.classes : [], mi = classes.indexOf('money'), out = {}, tot = {};
+    if (mi < 0 || C.fi.cls == null || C.fi.seg == null) return out;
+    for (var i = 0; i < C.nodes.length; i++) {
+      var sg = C.segments[num(field(C, i, 'seg'))], fi = sg && isNum(sg.family) ? sg.family : null;
+      if (fi == null) continue;
+      tot[fi] = (tot[fi] || 0) + 1;
+      if (num(field(C, i, 'cls')) === mi) out[fi] = (out[fi] || 0) + 1;
+    }
+    for (var k in tot) if (Object.prototype.hasOwnProperty.call(tot, k)) out[k] = (out[k] || 0) / tot[k];
+    return out;
+  }
+  // Scénario « chantiers de gabarit du plan » : sens de l'effet lu sur le score arrondi (un seul format, l'entier)
+  function scenarioState(C, d) {
+    var sc = d.scenario;
+    if (!sc || typeof sc !== 'object' || !sc.before || !sc.after || !isNum(sc.before.alignment) || !isNum(sc.after.alignment)) return null;
+    var b = sc.before, a = sc.after, bI = Math.round(b.alignment), aI = Math.round(a.alignment), dAl = a.alignment - b.alignment;
+    var vpB = C.valueCol && isNum(b.value_pages_share) ? b.value_pages_share : null;
+    var vpA = C.valueCol && isNum(a.value_pages_share) ? a.value_pages_share : null;
+    var dV = vpB != null && vpA != null ? vpA - vpB : null;
+    var negligible = Math.abs(dAl) < 1 && (dV == null || Math.abs(dV) < 0.005);
+    var tickets = Array.isArray(sc.tickets) ? sc.tickets.map(function (t) { return clean(t, 16); }).filter(Boolean).slice(0, 8) : [];
+    return { sc: sc, b: b, a: a, bI: bI, aI: aI, dAl: dAl, vpB: vpB, vpA: vpA, dV: dV, negligible: negligible,
+      down: !negligible && aI < bI, up: !negligible && aI > bI, tickets: tickets };
+  }
+  // « inchangé (66) » ; un écart de moins d'un point qui change l'arrondi le dit, pour ne pas passer pour un gain
+  function alPair(S) { return S.bI === S.aI ? 'inchangé (' + S.bI + ')' : S.bI + ' → ' + S.aI + (Math.abs(S.dAl) < 1 ? ', moins d’un point' : ''); }
+  // Nom du pire écart : une rubrique (« /blog/ (toutes langues) ») ou, à défaut, un segment.
+  function wsName(C) {
+    var f = C.ws && C.ws.family;
+    if (!f) return C.ws ? segName(C.ws.segment) : '';
+    var base = segName(f.name);
+    return Array.isArray(f.langs) && f.langs.length ? base + ' (toutes langues)' : base;
+  }
+  function wsIn(C) {
+    var f = C.ws && C.ws.family;
+    if (!f) return C.ws ? segIn(C.ws.segment) : '';
+    return /^(accueil|racine|autres)$/.test(String(f.name)) ? segIn(f.name) : 'dans ' + wsName(C);
+  }
+  // Part de l'autorité du pire écart dans un état du scénario (avant ou après), à la même échelle.
+  function wsShare(C, st) {
+    var f = C.ws && C.ws.family;
+    if (f && st && st.segment_share && Array.isArray(f.segments)) {
+      var t = 0, hit = false;
+      f.segments.forEach(function (sn) { if (isNum(st.segment_share[sn])) { t += st.segment_share[sn]; hit = true; } });
+      if (hit) return t;
+    }
+    return st && st.worst_segment && isNum(st.worst_segment.pr_share) && !f ? st.worst_segment.pr_share : null;
+  }
+
+  // ── Squelette d'une diapositive ───────────────────────────────────────────
+  function heading(tag, cls, parts) {
+    var h = el(tag, cls);
+    (parts || []).forEach(function (p) {
+      if (p == null) return;
+      if (typeof p === 'string') h.appendChild(document.createTextNode(p));
+      else h.appendChild(el('em', null, p.em));
+    });
+    return h;
+  }
+  function plainTitle(parts) { return (parts || []).map(function (p) { return p == null ? '' : (typeof p === 'string' ? p : p.em); }).join(''); }
+  // Estimation du nombre de lignes d'un titre de 44 px sur 1 072 px (environ 44 caractères par ligne)
+  function titleLines(parts) { return Math.max(1, Math.ceil(plainTitle(parts).length / 44)); }
+
+  function footer(C, right, pageNo) {
+    var f = el('div', 'pr-pied');
+    var left = el('div', 'pr-marque');
+    if (C.brand.logo) { var img = el('img'); img.alt = ''; img.src = C.brand.logo; left.appendChild(img); }
+    left.appendChild(el('span', null, C.footLeft));
+    f.appendChild(left);
+    f.appendChild(el('div', 'pr-pied-r' + (pageNo ? ' pr-pied-page' : ''), right || ''));
+    return f;
+  }
+
+  function makeSlide(C, o) {
+    var s = el('section', 'slide' + (o.dark ? ' pr-dark' : '') + (o.cls ? ' ' + o.cls : ''));
+    s.setAttribute('tabindex', '-1');
+    s.setAttribute('role', 'group');
+    s.setAttribute('aria-roledescription', 'diapositive');
+    if (!o.dark) {
+      var rail = el('div', 'pr-rail');
+      add(rail, el('div', 'pr-rail-num'), el('div', 'pr-rail-trait'), el('div', 'pr-rail-vert', o.rail || ''));
+      s.appendChild(rail);
+    }
+    if (o.eyebrow) s.appendChild(el('div', 'pr-eyebrow', '[ ' + o.eyebrow + ' ]'));
+    if (o.title) s.appendChild(heading(o.h1 ? 'h1' : 'h2', o.h1 ? 'pr-h1' : 'pr-h2', o.title));
+    s._label = plainTitle(o.title);
+    s._foot = footer(C, o.source, o.pageNo);
+    return s;
+  }
+  function finish(s) { s.appendChild(s._foot); return s; }
+  function retenir(text) { var p = el('p', 'pr-retenir'); add(p, el('b', null, 'À retenir'), text); return p; }
+
+  // ── Icône de statut (cercle plein + pictogramme, jamais la couleur seule) ──
+  function statusIcon(kind, color) {
+    var g = sv('svg', { viewBox: '0 0 22 22', 'aria-hidden': 'true', focusable: 'false' });
+    g.appendChild(sv('circle', { cx: 11, cy: 11, r: 11 }, { fill: color }));
+    var ink = kind === 'warn' ? INK : '#ffffff';
+    var d = kind === 'check' ? 'M6.2 11.4l3.1 3.1 6.4-6.6' : (kind === 'warn' ? 'M11 5.6v6.6M11 15.8v.3' : 'M7.3 7.3l7.4 7.4M14.7 7.3l-7.4 7.4');
+    g.appendChild(sv('path', { d: d }, { fill: 'none', stroke: ink, 'stroke-width': '2.4', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+    return g;
+  }
+  function band(score) {
+    if (score >= 85) return { key: 'bon', icon: 'check', label: 'Aligné' };
+    if (score >= 70) return { key: 'corriger', icon: 'warn', label: 'À corriger' };
+    return { key: 'critique', icon: 'cross', label: 'Désaligné' };
+  }
+
+  // Barre horizontale : extrémité de donnée arrondie (4 px), carrée sur la ligne de base
+  function barPath(x, y, len, t) {
+    var r = Math.min(4, len / 2, t / 2);
+    return 'M' + r1(x) + ' ' + r1(y) + 'H' + r1(x + len - r) + 'A' + r1(r) + ' ' + r1(r) + ' 0 0 1 ' + r1(x + len) + ' ' + r1(y + r) +
+      'V' + r1(y + t - r) + 'A' + r1(r) + ' ' + r1(r) + ' 0 0 1 ' + r1(x + len - r) + ' ' + r1(y + t) + 'H' + r1(x) + 'Z';
+  }
+  function legend(items) {
+    var l = el('div', 'pr-legende');
+    items.forEach(function (it) { var s = el('span'); var i = el('i'); i.style.background = it.color; add(s, i, it.label); l.appendChild(s); });
+    return l;
+  }
+
+  // ══ Diapositives ═══════════════════════════════════════════════════════════
+
+  // 1 · Couverture (typographie seule)
+  function slideCover(C) {
+    var s = makeSlide(C, { rail: 'Maillage interne', eyebrow: 'Audit du maillage interne', source: '',
+      title: ['Maillage interne de ', { em: shorten(C.site, 40) }, '.'], h1: true });
+    var h = s.querySelector('.pr-h1');
+    if (C.site.length > 18 && h) h.classList.add('pr-long-title');
+    s.appendChild(el('p', 'pr-lead', 'Où va l’autorité de votre site, et comment la remettre sur ' +
+      (C.kind === 'business' ? 'ce qui rapporte.' : 'les pages qui comptent.')));
+    var bas = el('div', 'pr-couv-bas');
+    function col(k, v, logo) {
+      var c = el('div');
+      c.appendChild(el('div', 'pr-k', k));
+      var vv = el('div', 'pr-couv-v');
+      if (logo) { var img = el('img'); img.alt = ''; img.src = logo; vv.appendChild(img); }
+      add(vv, v);
+      c.appendChild(vv);
+      return c;
+    }
+    bas.appendChild(col('Site analysé', C.host || C.site));
+    // La mesure et sa période sur la couverture : un bilan de clics est un bilan de visibilité, pas de ventes
+    bas.appendChild(col('Données', fmtNum(C.nPages) + ' pages, ' + fmtNum(C.nLinks) + ' liens' + (C.valueCol ? ' ; ' + C.measureText : '')));
+    if (C.brand.name || C.brand.logo) bas.appendChild(col('Préparé par', (C.brand.name ? C.brand.name + ' · ' : '') + C.date, C.brand.logo));
+    else bas.appendChild(col('Analyse', C.date || 'n/a'));
+    s.appendChild(bas);
+    s.appendChild(el('p', 'pr-provenance', 'Rapport produit avec prgraph ' + (C.version || '')));
+    return finish(s);
+  }
+
+  // 2 · Sommaire (renvois de page calculés après les omissions)
+  function slideSommaire(C, toc) {
+    var s = makeSlide(C, { rail: 'Sommaire', eyebrow: 'Sommaire', title: ['Au programme.'], source: 'Méthode en dernière page' });
+    var g = el('div', 'pr-sommaire');
+    g.style.gridTemplateRows = 'repeat(' + Math.ceil(toc.length / 2) + ', auto)';
+    toc.forEach(function (t) {
+      var l = el('div', 'pr-ligne');
+      var tt = el('span', 'pr-ligne-t', t.title);
+      tt.appendChild(el('span', 'pr-ligne-d', t.sub));
+      add(l, el('span', 'pr-ligne-n', pad2(t.n)), tt, el('span', 'pr-ligne-p', 'p. ' + t.page));
+      g.appendChild(l);
+    });
+    s.appendChild(g);
+    return finish(s);
+  }
+
+  // Transitions sombres (grand numéro)
+  function slideTransition(C, n, part) {
+    var s = makeSlide(C, { dark: true, source: '', pageNo: true });
+    s.appendChild(el('div', 'pr-grand', pad2(n)));
+    s.appendChild(heading('h1', 'pr-h1', [part.title + '.']));
+    s.appendChild(el('p', 'pr-lead', part.lead));
+    s._label = part.title;
+    return finish(s);
+  }
+
+  // 4 · Le verdict en trois tuiles
+  function slideVerdict(C) {
+    if (!C.al || !isNum(C.al.score)) return null;
+    var score = C.al.score, b = band(score);
+    var byValue = C.al.basis !== 'cible par défaut' && !!C.valueCol;
+    var the = byValue ? C.v.the : 'la cible';
+    var title = b.key === 'critique' ? ['L’autorité ne va pas ', { em: byValue ? 'là où ' + C.v.made + ' ' + C.v.the : 'là où elle devrait' }, '.']
+      : b.key === 'corriger' ? ['L’autorité suit ' + the + ' ', { em: 'en partie seulement' }, '.']
+        : ['L’autorité suit ' + the + ' ', { em: 'par type de page' }, '.'];
+    var s = makeSlide(C, { rail: 'Le constat', eyebrow: 'Le verdict', title: title, source: C.srcValue });
+    var tiles = el('div', 'pr-tuiles');
+
+    // Tuile 1 : score d'alignement et son libellé de barème
+    var t1 = el('div', 'pr-tuile');
+    t1.appendChild(el('div', 'pr-k', 'Score d’alignement'));
+    var big = el('div', 'pr-big', fmtNum(score, 0));
+    big.appendChild(el('small', null, '/ 100'));
+    t1.appendChild(big);
+    var st = el('div', 'pr-statut');
+    add(st, statusIcon(b.icon, STATUS[b.key]), b.label);
+    t1.appendChild(st);
+    t1.appendChild(el('div', 'pr-e', byValue ? '100 : l’autorité se répartit exactement comme ' + C.v.the + '.' : '100 : l’autorité suit exactement la répartition cible.'));
+    tiles.appendChild(t1);
+
+    // Tuile 2 : le pire écart (rubrique toutes langues, sinon segment, sinon type de page)
+    var t2 = el('div', 'pr-tuile');
+    t2.appendChild(el('div', 'pr-k', 'Le plus gros écart'));
+    if (C.ws) {
+      t2.appendChild(el('div', 'pr-tuile-nom', wsName(C)));
+      t2.appendChild(el('div', 'pr-big', pctI(C.ws.pr_share)));
+      t2.appendChild(el('div', 'pr-sub', 'de l’autorité, pour ' + pctI(C.ws.value_share) + ' ' + C.v.of + '.'));
+      var wPages = null, wStarv = 0;
+      if (C.ws.family) {
+        C.segments.forEach(function (sg) {
+          if (!sg || C.ws.family.segments.indexOf(String(sg.name)) < 0) return;
+          wPages = (wPages || 0) + Math.max(0, num(sg.pages)); wStarv += Math.max(0, num(sg.starving));
+        });
+        if (isNum(C.ws.family.pages)) wPages = C.ws.family.pages;
+      } else if (C.wsSeg && isNum(C.wsSeg.pages)) { wPages = C.wsSeg.pages; wStarv = num(C.wsSeg.starving); }
+      if (isNum(wPages) && wPages > 0)
+        t2.appendChild(el('div', 'pr-e', nPages(wPages) + (wStarv > 0 ? ', dont ' + fmtNum(wStarv) + ' en manque de liens.' : '.')));
+    } else {
+      var wc = worstClass(C);
+      if (wc) {
+        t2.appendChild(el('div', 'pr-tuile-nom pr-nom-texte', wc.label));
+        t2.appendChild(el('div', 'pr-big', pctI(wc.pr)));
+        t2.appendChild(el('div', 'pr-sub', 'de l’autorité, pour une cible de ' + pctI(wc.target) + '.'));
+      } else {
+        t2.appendChild(el('div', 'pr-big', 'n/a'));
+        t2.appendChild(el('div', 'pr-sub', 'Aucun écart notable entre valeur et autorité.'));
+      }
+    }
+    tiles.appendChild(t2);
+
+    // Tuile 3 : la part qui circule par les blocs répétés
+    var t3 = el('div', 'pr-tuile');
+    if (C.zones) {
+      t3.appendChild(el('div', 'pr-k', 'Menus et pieds de page'));
+      t3.appendChild(el('div', 'pr-big', pctI(C.tmplShare)));
+      t3.appendChild(el('div', 'pr-sub', 'de l’autorité circule par les blocs répétés sur tout le site.'));
+      t3.appendChild(el('div', 'pr-e', 'Le texte des pages en porte ' + pctI(C.contentShare) + '.'));
+    } else if (C.waste != null) {
+      t3.appendChild(el('div', 'pr-k', 'Pages légales et support'));
+      t3.appendChild(el('div', 'pr-big', pctA(C.waste)));
+      t3.appendChild(el('div', 'pr-sub', 'de l’autorité captée par les pages légales et support.'));
+    }
+    tiles.appendChild(t3);
+    s.appendChild(tiles);
+
+    // À retenir : une phrase, la mesure nommée, une seule parenthèse
+    var top = topFamily(C, null);
+    var txt;
+    var wsIsTop = C.ws && top && (C.ws.family ? isWsFam(C, top) : sameFamily(C, top, C.ws.segment));
+    var wsFact = C.ws ? wsSubject(C) + ' fait ' + pctI(C.ws.value_share) + ' ' + C.v.of + ' avec ' + pctI(C.ws.pr_share) + ' de l’autorité.' : '';
+    if (C.ws && b.key === 'bon') {
+      txt = 'L’équilibre par type de page est bon, mais ' + wsFact;
+    } else if (C.ws && top && !wsIsTop) {
+      txt = 'Le maillage nourrit d’abord les pages ' + famPhrase(top.name) + ' (' + pctI(top.pr_share) + ' de l’autorité), alors que ' + wsFact;
+    } else if (C.ws) {
+      txt = 'Les pages ' + doingMost(C) + ', ' + wsIn(C) + ', reçoivent trop peu d’autorité.';
+    } else {
+      txt = b.key === 'bon' ? 'L’équilibre est bon : le travail porte sur quelques pages mal reliées.'
+        : (byValue ? 'L’autorité ne suit pas ' + C.v.the : 'L’autorité ne suit pas la répartition cible par type de page') +
+          ' : le plan d’action dit où la reprendre.';
+    }
+    s.appendChild(retenir(txt));
+    return finish(s);
+  }
+  function worstClass(C) {
+    if (!C.al || !C.al.pr_share || !C.al.target_share) return null;
+    var labels = C.meta.class_labels || {}, best = null;
+    Object.keys(C.al.target_share).forEach(function (k) {
+      if (k === 'accueil') return;
+      var g = num(C.al.target_share[k]) - num(C.al.pr_share[k]);
+      if (g > 0 && (!best || g > best.gap)) best = { key: k, gap: g, pr: num(C.al.pr_share[k]), target: num(C.al.target_share[k]),
+        label: clean(labels[k] || k, 60).replace(/\s*\(.*\)$/, '') };
+    });
+    return best;
+  }
+  function topFamily(C, excludeSegment) {
+    var best = null;
+    C.families.forEach(function (f) {
+      if (f.name === 'autres') return;
+      if (excludeSegment != null && sameFamily(C, f, excludeSegment)) return;
+      if (!best || num(f.pr_share) > num(best.pr_share)) best = f;
+    });
+    return best;
+  }
+  function sameFamily(C, fam, segmentName) {
+    return Array.isArray(fam.segments) && fam.segments.some(function (x) { return String(x) === String(segmentName); });
+  }
+
+  // 5 · Ce qui rapporte contre ce qui reçoit (barres horizontales appariées)
+  function slideValeur(C) {
+    var rows = [], byValue = !!C.valueCol, legendA, legendB, note = null, hi = -1, title;
+    if (byValue && C.families.length) {
+      C.families.forEach(function (f) {
+        var v = num(f.value_share), p = num(f.pr_share);
+        if (v <= 0 && p <= 0) return;
+        var langs = Array.isArray(f.langs) && f.langs.length ? 'avec ' + f.langs.slice(0, 4).map(function (x) { return clean(x, 8); }).join(', ') : '';
+        rows.push({ label: famLabel(f.name), sub: (isNum(f.pages) ? nPages(f.pages) : '') + (langs ? ' · ' + langs : ''),
+          a: v, b: p, other: f.name === 'autres', name: f.name });
+      });
+      rows.sort(function (x, y) { return (x.other - y.other) || (y.a - x.a); });
+      legendA = 'Part ' + C.v.of; legendB = 'Part de l’autorité';
+      if (C.families.some(function (f) { return Array.isArray(f.langs) && f.langs.length; }))
+        note = 'Une rubrique regroupe ses versions de langue (blog = /blog/, /fr/blog/, /uk/blog/...).';
+    } else if (C.al && C.al.pr_share && C.al.target_share) {
+      var labels = C.meta.class_labels || {};
+      Object.keys(C.al.target_share).forEach(function (k) {
+        if (k === 'accueil') return;
+        rows.push({ label: shorten(clean(labels[k] || k, 60).replace(/\s*\(.*\)$/, ''), 24), sub: C.al.counts && isNum(C.al.counts[k]) ? nPages(C.al.counts[k]) : '',
+          a: num(C.al.target_share[k]), b: num(C.al.pr_share[k]), name: k });
+      });
+      rows.sort(function (x, y) { return y.a - x.a; });
+      legendA = 'Cible par défaut'; legendB = 'Part de l’autorité';
+      note = 'Sans donnée de valeur (visites, ventes), la comparaison se fait avec la répartition cible par défaut de l’outil.';
+    }
+    if (!rows.length) return null;
+    rows = rows.slice(0, 8);
+    var wsF = byValue && C.ws && C.ws.family ? C.ws.family : null;
+    // Le pire écart est celui de alignment.worst_family (même chiffre que les diapositives 4 et 12) ;
+    // repli : la ligne au plus grand écart
+    if (wsF) rows.forEach(function (r, i) { if (!r.other && String(r.name) === wsF.name) hi = i; });
+    else rows.forEach(function (r, i) { if (r.a - r.b > 0 && (hi < 0 || r.a - r.b > rows[hi].a - rows[hi].b) && !r.other) hi = i; });
+    var verb = function (a) { return C.v.generic ? ' rapportent ' + pctI(a) + ' de la valeur' : ' font ' + pctI(a) + ' ' + C.v.of; };
+    if (wsF) {
+      title = ['Les pages ', { em: famPhrase(wsF.name) }, verb(C.ws.value_share) + ' et reçoivent ' + pctI(C.ws.pr_share) + ' de l’autorité.'];
+    } else if (hi >= 0) {
+      var h = rows[hi];
+      title = byValue ? ['Les pages ', { em: famPhrase(h.name) }, verb(h.a) + ' et reçoivent ' + pctI(h.b) + ' de l’autorité.']
+        : ['Les pages ', { em: h.label.toLowerCase() }, ' reçoivent ' + pctI(h.b) + ' de l’autorité pour une cible de ' + pctI(h.a) + '.'];
+    } else {
+      title = ['Chaque ' + (byValue ? 'rubrique' : 'type de page') + ' reçoit ', { em: 'sa part d’autorité' }, '.'];
+    }
+    var eyebrow = !byValue ? 'Types de pages' : (C.v.generic && C.kind === 'business' ? 'Ce qui rapporte, ce qui reçoit' : cap1(C.v.short) + ' face à l’autorité');
+    var s = makeSlide(C, { rail: 'Le constat', eyebrow: eyebrow, title: title, source: C.srcValue });
+    var cA = '#8f8e88', cB = 'var(--pr-accent)';
+    s.appendChild(legend([{ label: legendA, color: cA }, { label: legendB, color: cB }]));
+
+    // Hauteur disponible entre la légende et la pile du bas (réserve sur la mesure, note) : le pas des barres
+    // se resserre avant de retirer des lignes
+    var caveat = byValue && C.traffic;
+    var avail = SH - (56 + 31 + titleLines(title) * 45 + 44 + 12) - (74 + (caveat ? 50 : 0) + (note ? 22 : 0) + 14);
+    var top = 6, pitch = Math.max(38, Math.min(47, Math.floor((avail - top) / rows.length)));
+    if (top + rows.length * pitch > avail) rows = rows.slice(0, Math.max(3, Math.floor((avail - top) / pitch)));
+    if (hi >= rows.length) hi = -1;
+    var t = pitch >= 45 ? 14 : 12, gap = 3, x0 = 236;
+    var Hc = top + rows.length * pitch;
+    var maxV = rows.reduce(function (m, r) { return Math.max(m, r.a, r.b); }, 0) || 1;
+    var len = CW - x0 - 64;
+    var svg = sv('svg', { width: CW, height: Hc, viewBox: '0 0 ' + CW + ' ' + Hc, role: 'img',
+      'aria-label': legendA + ' et ' + legendB.toLowerCase() + ', par ' + (byValue ? 'rubrique' : 'type de page') }, { 'font-family': 'var(--pr-sans)' });
+    rows.forEach(function (r, i) {
+      var y = top + i * pitch;
+      if (i === hi) svg.appendChild(sv('rect', { x: -8, y: y - 7, width: CW + 8, height: 2 * t + gap + 14, rx: 6 }, { fill: 'var(--pr-accent-wash)' }));
+      svg.appendChild(svText(0, y + 13, r.label, null, { fill: INK, 'font-size': '15px', 'font-weight': '700' }));
+      if (r.sub) svg.appendChild(svText(0, y + 30, r.sub, null, { fill: INK2, 'font-size': '12px' }));
+      [[r.a, cA, legendA], [r.b, cB, legendB]].forEach(function (pair, j) {
+        var yy = y + j * (t + gap), l = len * pair[0] / maxV;
+        if (l >= 0.5) svg.appendChild(tip(sv('path', { d: barPath(x0, yy, l, t) }, { fill: pair[1] }), r.label + ' : ' + pctA(pair[0]) + ' (' + pair[2].charAt(0).toLowerCase() + pair[2].slice(1) + ')'));
+        svg.appendChild(svText(x0 + Math.max(l, 0) + 8, yy + t - 2.5, pctA(pair[0]), null,
+          { fill: j ? INK : INK2, 'font-size': '12.5px', 'font-weight': j ? '700' : '400', 'font-variant-numeric': 'tabular-nums' }));
+      });
+    });
+    svg.appendChild(sv('line', { x1: x0, y1: top - 4, x2: x0, y2: Hc - 12 }, { stroke: BASE, 'stroke-width': '1' }));
+    var box = el('div', 'pr-chart');
+    box.appendChild(svg);
+    s.appendChild(box);
+    bottomStack(s, [caveat ? el('p', 'pr-garde', trafficCaveat(C)) : null, note ? el('p', 'pr-petit', note) : null]);
+    return finish(s);
+  }
+  function bottomStack(s, items) {
+    var b = el('div', 'pr-bas'), n = 0;
+    items.forEach(function (x) { if (x) { b.appendChild(x); n++; } });
+    if (n) s.appendChild(b);
+    return b;
+  }
+
+  // 7 · La carte des silos (SVG statique, disposition en anneau déterministe)
+  function slideSilos(C) {
+    var fams = C.families.filter(function (f) { return num(f.pr_share) > 0; });
+    if (fams.length < 2) return null;
+    var idx = {};
+    C.families.forEach(function (f, i) { idx[i] = fams.indexOf(f); });
+    // Matrice segment × segment agrégée par famille
+    var n = fams.length, F = [], tot = 0, i, j;
+    for (i = 0; i < n; i++) { F.push([]); for (j = 0; j < n; j++) F[i].push(0); }
+    var flows = Array.isArray(C.d.seg_flows) ? C.d.seg_flows : [];
+    flows.forEach(function (row, a) {
+      if (!Array.isArray(row)) return;
+      row.forEach(function (v, b) {
+        v = Math.max(0, num(v)); tot += v;
+        var sa = C.segments[a], sb = C.segments[b];
+        if (!sa || !sb) return;
+        var fa = idx[sa.family], fb = idx[sb.family];
+        if (fa == null || fb == null || fa < 0 || fb < 0) return;
+        F[fa][fb] += v;
+      });
+    });
+    var arrows = [];
+    if (tot > 0) for (i = 0; i < n; i++) for (j = 0; j < n; j++) if (i !== j && F[i][j] / tot > 0.03) arrows.push({ a: i, b: j, share: F[i][j] / tot });
+    arrows.sort(function (x, y) { return y.share - x.share; });
+    arrows = arrows.slice(0, 14);
+
+    var top = fams[0];
+    var title = ['Les pages ', { em: famPhrase(top.name) }, ' captent ' + pctI(top.pr_share) + ' de l’autorité.'];
+    var s = makeSlide(C, { rail: 'Où va l’autorité', eyebrow: 'La carte des silos', source: C.srcCrawl, title: title });
+
+    // Géométrie déterministe : la rubrique la plus nourrie au centre, les autres sur une ellipse, espacées
+    // à longueur d'arc égale, dans l'ordre de leur part d'autorité. Aire des cercles proportionnelle à la part.
+    var VW = CW, VH = titleLines(title) > 1 ? 410 : 456, cx = VW / 2, cy = VH / 2;
+    var maxS = num(top.pr_share) || 1, R0 = 76, rMin = 9;
+    var Rx = 330, Ry = 158, ringN = n - 1;
+    var samp = 720, pts = [], cum = [0], th, q;
+    for (q = 0; q <= samp; q++) { th = Math.PI + 2 * Math.PI * q / samp; pts.push({ th: th, x: cx + Rx * Math.cos(th), y: cy + Ry * Math.sin(th) }); }
+    for (q = 1; q <= samp; q++) cum.push(cum[q - 1] + Math.hypot(pts[q].x - pts[q - 1].x, pts[q].y - pts[q - 1].y));
+    var perim = cum[samp];
+    function atArc(frac) { var target = frac * perim, q2 = 0; while (q2 < samp && cum[q2 + 1] < target) q2++; return pts[q2]; }
+    var P = fams.map(function (f, k) {
+      var r = Math.max(rMin, R0 * Math.sqrt(num(f.pr_share) / maxS));
+      if (k === 0) return { f: f, center: true, th: 0, x: cx, y: cy, r: r };
+      var pt = atArc((k - 0.5) / ringN);
+      return { f: f, center: false, th: pt.th, x: pt.x, y: pt.y, r: r };
+    });
+    if (n === 2) { P[0].x = cx - 220; P[1].x = cx + 220; P[1].y = cy; P[1].th = 0; P[0].center = false; P[0].th = Math.PI; }
+    // Aucun chevauchement : réduire tous les rayons si deux cercles se touchent
+    var shrink = 1;
+    for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) {
+      var dd = Math.hypot(P[i].x - P[j].x, P[i].y - P[j].y) - 26;
+      if (P[i].r + P[j].r > dd && dd > 0) shrink = Math.min(shrink, dd / (P[i].r + P[j].r));
+    }
+    P.forEach(function (p) { p.r = Math.max(rMin, p.r * shrink); });
+
+    var svg = sv('svg', { width: VW, height: VH, role: 'img', preserveAspectRatio: 'xMidYMid meet',
+      'aria-label': 'Carte des rubriques : taille = part de l’autorité, flèches = flux de plus de 3 % entre rubriques' }, { 'font-family': 'var(--pr-sans)' });
+    var gA = sv('g'), gC = sv('g'), gL = sv('g');
+    svg.appendChild(gA); svg.appendChild(gC); svg.appendChild(gL);
+    var bb = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
+    function grow(x0, y0, x1, y1) { bb.x0 = Math.min(bb.x0, x0); bb.y0 = Math.min(bb.y0, y0); bb.x1 = Math.max(bb.x1, x1); bb.y1 = Math.max(bb.y1, y1); }
+
+    // Flèches (sous les cercles), épaisseur proportionnelle au flux. Centre et anneau : presque droites ;
+    // anneau vers anneau : courbées vers l'extérieur pour contourner le centre. Les deux sens d'une paire
+    // sont décalés de part et d'autre.
+    var fmax = arrows.length ? arrows[0].share : 1;
+    arrows.forEach(function (ar, k) {
+      var A = P[ar.a], B = P[ar.b];
+      var dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy) || 1;
+      var ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+      var mx0 = (A.x + B.x) / 2, my0 = (A.y + B.y) / 2;
+      var cxp = mx0 + nx * 18, cyp = my0 + ny * 18;
+      if (!A.center && !B.center && n > 2) {
+        var ox = mx0 - cx, oy = my0 - cy, ol = Math.hypot(ox, oy);
+        if (ol < 20) { ox = nx; oy = ny; ol = 1; }
+        cxp = mx0 + ox / ol * L * 0.28 + nx * 14; cyp = my0 + oy / ol * L * 0.28 + ny * 14;
+      }
+      var w = 1.6 + 8.4 * ar.share / fmax;
+      var sdx = cxp - A.x, sdy = cyp - A.y, sl = Math.hypot(sdx, sdy) || 1;
+      var S = { x: A.x + sdx / sl * (A.r + 5), y: A.y + sdy / sl * (A.r + 5) };
+      var edx = cxp - B.x, edy = cyp - B.y, el_ = Math.hypot(edx, edy) || 1;
+      var ex = edx / el_, ey = edy / el_;
+      var head = 8 + w * 1.5, hw = 4.5 + w * 1.05;
+      var tipP = { x: B.x + ex * (B.r + 5), y: B.y + ey * (B.r + 5) };
+      var baseP = { x: tipP.x + ex * head, y: tipP.y + ey * head };
+      var col = k === 0 ? INK2 : '#8f8e88', op = k === 0 ? '.9' : '.72';
+      var path = sv('path', { d: 'M' + r1(S.x) + ' ' + r1(S.y) + 'Q' + r1(cxp) + ' ' + r1(cyp) + ' ' + r1(baseP.x) + ' ' + r1(baseP.y) },
+        { fill: 'none', stroke: col, 'stroke-width': r1(w) + 'px', 'stroke-linecap': 'butt', opacity: op });
+      var poly = sv('path', { d: 'M' + r1(tipP.x) + ' ' + r1(tipP.y) + 'L' + r1(baseP.x - ey * hw) + ' ' + r1(baseP.y + ex * hw) +
+        'L' + r1(baseP.x + ey * hw) + ' ' + r1(baseP.y - ex * hw) + 'Z' }, { fill: col, opacity: op });
+      var label = famLabel(A.f.name) + ' vers ' + famLabel(B.f.name) + ' : ' + pctA(ar.share) + ' du flux';
+      tip(path, label); tip(poly, label);
+      gA.appendChild(path); gA.appendChild(poly);
+      grow(Math.min(S.x, cxp, baseP.x), Math.min(S.y, cyp, baseP.y), Math.max(S.x, cxp, baseP.x), Math.max(S.y, cyp, baseP.y));
+      if (k === 0) {
+        var mx = 0.25 * S.x + 0.5 * cxp + 0.25 * baseP.x, my = 0.25 * S.y + 0.5 * cyp + 0.25 * baseP.y;
+        gL.appendChild(svText(mx, my + 4, pctA(ar.share), { 'text-anchor': 'middle' },
+          { fill: INK, 'font-size': '13px', 'font-weight': '700', stroke: PAPER, 'stroke-width': '4px', 'paint-order': 'stroke', 'stroke-linejoin': 'round' }));
+      }
+    });
+
+    // Cercles (anneau de 2 px couleur papier) et étiquettes directes ; le centre porte son étiquette à l'intérieur
+    P.forEach(function (p) {
+      var fill = famColor(p.f);
+      var c = sv('circle', { cx: r1(p.x), cy: r1(p.y), r: r1(p.r) }, { fill: fill, stroke: PAPER, 'stroke-width': '2px' });
+      tip(c, famLabel(p.f.name) + ' : ' + pctA(p.f.pr_share) + ' de l’autorité' + (isNum(p.f.pages) ? ', ' + nPages(p.f.pages) : ''));
+      gC.appendChild(c);
+      grow(p.x - p.r, p.y - p.r, p.x + p.r, p.y + p.r);
+      var name = famLabel(p.f.name), share = pctA(p.f.pr_share);
+      var wTxt = Math.max(name.length * 8.6, share.length * 7.5), lx, ly, anchor, ink = INK, ink2 = INK2;
+      var co = Math.cos(p.th);
+      if (p.center && p.r >= 46 && name.length * 8.6 < 2 * p.r - 12) {
+        anchor = 'middle'; lx = p.x; ly = p.y - 2; ink = inkOn(fill); ink2 = ink;
+      } else if (p.center) {
+        anchor = 'middle'; lx = p.x; ly = p.y + p.r + 20; grow(lx - wTxt / 2, ly - 16, lx + wTxt / 2, ly + 20);
+      } else {
+        // Anneau : étiquette sur le côté extérieur, pour garder la hauteur de la carte
+        anchor = co < -0.05 ? 'end' : 'start';
+        lx = p.x + (anchor === 'end' ? -1 : 1) * (p.r + 10); ly = p.y - 4;
+        grow(anchor === 'end' ? lx - wTxt : lx, ly - 16, anchor === 'end' ? lx : lx + wTxt, ly + 20);
+      }
+      gL.appendChild(svText(lx, ly, name, { 'text-anchor': anchor }, { fill: ink, 'font-size': '15px', 'font-weight': '700' }));
+      gL.appendChild(svText(lx, ly + 18, share, { 'text-anchor': anchor }, { fill: ink2, 'font-size': '13px' }));
+    });
+    var pad = 10;
+    svg.setAttribute('viewBox', [r1(bb.x0 - pad), r1(bb.y0 - pad), r1(bb.x1 - bb.x0 + 2 * pad), r1(bb.y1 - bb.y0 + 2 * pad)].join(' '));
+    var box = el('div', 'pr-carte');
+    box.appendChild(svg);
+    s.appendChild(box);
+    var read = 'Taille d’un cercle : sa part d’autorité. Flèche : flux de plus de 3 % entre rubriques';
+    if (arrows.length) read += ' ; le plus gros va de ' + famLabel(P[arrows[0].a].f.name) + ' vers ' + famLabel(P[arrows[0].b].f.name) + ' (' + pctA(arrows[0].share) + ').';
+    else read += ' ; aucun ne dépasse ce seuil.';
+    s.appendChild(el('p', 'pr-petit', read));
+    return finish(s);
+  }
+
+  // 8 · Ce que coûte le gabarit (gros chiffre + barre segmentée des zones)
+  function slideGabarit(C) {
+    if (!C.zones) return null;
+    var z = C.zones, t = C.ztot;
+    var parts = [
+      { label: 'Texte des pages', value: Math.max(0, num(z.content)) / t, color: '#8f8e88' },
+      { label: 'Menus et pieds de page', value: C.tmplShare, color: 'accent' },
+      { label: 'Autres : fil d’Ariane, liens non classés, part redistribuée par le modèle', value: Math.max(0, 1 - C.contentShare - C.tmplShare), color: GRID }
+    ];
+    var ratio = C.contentShare > 0 ? C.tmplShare / C.contentShare : 9;
+    var title = ratio >= 1.1 ? ['Les menus et pieds de page pèsent ', { em: 'plus que le texte' }, ' des pages.']
+      : ratio >= 0.75 ? ['Les menus et pieds de page pèsent ', { em: 'presque autant que le texte' }, '.']
+        : ratio >= 0.4 ? ['Les menus et pieds de page portent ', { em: 'une part lourde' }, ' de l’autorité.']
+          : ['Le texte des pages porte ', { em: 'l’essentiel' }, ' de l’autorité.'];
+    var s = makeSlide(C, { rail: 'Où va l’autorité', eyebrow: 'Ce que coûte le gabarit', source: C.srcCrawl, title: title });
+    var g = el('div', 'pr-gab');
+    var hero = el('div', 'pr-hero');
+    hero.appendChild(el('div', 'pr-hero-n', pctA(C.tmplShare)));
+    hero.appendChild(el('p', null, 'de l’autorité circule par les blocs répétés sur chaque page : en‑tête, menu, pied de page, barre latérale.'));
+    g.appendChild(hero);
+    var calls = el('div');
+    function appel(v, txt) { var a = el('div', 'pr-appel'); a.appendChild(el('div', 'pr-appel-v', v)); a.appendChild(el('p', null, txt)); return a; }
+    calls.appendChild(appel(pctA(C.contentShare), 'passe par les liens placés dans le texte des pages.'));
+    if (C.waste != null) calls.appendChild(appel(pctA(C.waste), 'est captée par ' + (C.legalCount ? 'les ' + fmtNum(C.legalCount) + ' pages' : 'les pages') + ' légales et support.'));
+    g.appendChild(calls);
+    s.appendChild(g);
+
+    // Barre segmentée haute (28 px), valeurs dans les blocs quand elles tiennent
+    var accent = C.accent, H = 28, gapPx = 2;
+    var vis = parts.filter(function (p) { return p.value > 0.0005; });
+    var avail = CW - gapPx * (vis.length - 1), x = 0;
+    var svg = sv('svg', { width: CW, height: H, viewBox: '0 0 ' + CW + ' ' + H, role: 'img',
+      'aria-label': vis.map(function (p) { return p.label + ' ' + pctA(p.value); }).join(', ') }, { 'font-family': 'var(--pr-sans)' });
+    vis.forEach(function (p) {
+      var w = avail * p.value, fill = p.color === 'accent' ? accent : p.color;
+      svg.appendChild(tip(sv('rect', { x: r1(x), y: 0, width: r1(Math.max(w, 1)), height: H, rx: 4 }, { fill: fill }), p.label + ' : ' + pctA(p.value)));
+      if (w >= 62) svg.appendChild(svText(x + 10, 19, pctA(p.value), null, { fill: inkOn(fill), 'font-size': '14px', 'font-weight': '700' }));
+      x += w + gapPx;
+    });
+    var bar = el('div', 'pr-segbar');
+    bar.appendChild(svg);
+    bar.appendChild(legend(vis.map(function (p) { return { label: p.label, color: p.color === 'accent' ? accent : p.color }; })));
+    bar.lastChild.style.marginTop = '12px';
+    s.appendChild(bar);
+    return finish(s);
+  }
+
+  // 9 · Les pages mal reliées parmi celles qui font la valeur mesurée. Sans mesure de valeur, la diapositive
+  // est omise (la Méthode dit pourquoi) : on ne montre pas au client une page vide.
+  function slideAffamees(C) {
+    if (!C.valueCol) return null;
+    var ids = C.d.top && Array.isArray(C.d.top.starving) ? C.d.top.starving.filter(function (i) { return isNum(i) && C.nodes[i]; }) : [];
+    var s, grid = el('div', 'pr-cartes');
+    var periodLine = cap1(C.measureText) + '.';
+    var total = Math.max(C.starvingTotal, ids.length);
+    if (!ids.length) {
+      s = makeSlide(C, { rail: 'Où va l’autorité', eyebrow: 'Pages mal reliées', source: C.srcValue,
+        title: ['Aucune des pages ' + doing(C, 2) + ' ', { em: 'ne manque de liens' }, '.'] });
+      if (C.vp) s.appendChild(el('p', 'pr-chapo', vpSentence(C)));
+      bottomStack(s, [retenir('Elles reçoivent toutes au moins l’autorité médiane du site.'), el('p', 'pr-petit', periodLine)]);
+      return finish(s);
+    }
+    var shown = ids.slice(0, 5);
+    s = makeSlide(C, { rail: 'Où va l’autorité', eyebrow: 'Pages mal reliées', source: C.srcValue,
+      title: total > 1 ? [{ em: fmtNum(total) + ' pages' }, ' ' + doing(C, 2) + ' manquent de liens.'] : [{ em: 'Une page' }, ' ' + doing(C, 1) + ' manque de liens.'] });
+    // La part de l'autorité des pages qui portent la valeur : le chiffre qui mérite « les pages qui font la valeur »
+    if (C.vp) s.appendChild(el('p', 'pr-chapo', vpSentence(C)));
+    grid.style.marginTop = C.vp ? '22px' : '30px';
+    grid.style.gridTemplateColumns = 'repeat(' + Math.max(shown.length, 3) + ', 1fr)';
+    var truncated = !!C.meta.truncated;
+    shown.forEach(function (i) {
+      var nd = nodeObj(C, i);
+      var f = el('div', 'pr-fiche');
+      if (C.vp) f.style.minHeight = '330px';
+      f.appendChild(el('div', 'pr-fiche-v', fmtVal(nd.value)));
+      f.appendChild(el('div', 'pr-fiche-u', C.unit(nd.value)));
+      f.appendChild(el('div', 'pr-chemin', shorten(pathOf(nd.url), 90)));
+      var ttl = clean(nd.title, 120);
+      if (ttl) f.appendChild(el('div', 'pr-titre-page', ttl));
+      var foot = el('div', 'pr-fiche-pied');
+      function stat(k, v) { var d = el('div'); add(d, el('div', 'pr-stat-k', k), el('div', 'pr-stat-v', v)); return d; }
+      if (truncated) foot.appendChild(stat('Score d’autorité', fmtNum(num(nd.score), 0) + ' / 100'));
+      else foot.appendChild(stat('Rang d’autorité', fmtNum(prRank(C, i)) + ' / ' + fmtNum(C.nPages)));
+      foot.appendChild(stat('Liens entrants', fmtNum(num(nd.indeg))));
+      f.appendChild(foot);
+      grid.appendChild(f);
+    });
+    s.appendChild(grid);
+    s.appendChild(el('p', 'pr-petit', (total > shown.length ? 'Les ' + shown.length + ' ' + doingMost(C) + ' sur ' + fmtNum(total) + ' ; la liste complète est dans le mode Analyse. ' : '') +
+      'Rang 1 = la page qui reçoit le plus d’autorité. ' + periodLine));
+    return finish(s);
+  }
+
+  // 11 · Le plan d'action
+  function planActions(C) {
+    var acts = Array.isArray(C.d.actions) ? C.d.actions : [], seen = {}, out = [];
+    acts.forEach(function (a) {
+      if (out.length >= 5 || !a || typeof a !== 'object') return;
+      var fam = a.family;
+      // Une action éditoriale sans lien à poser (objectif déjà atteint, aucun émetteur) n'est pas un chantier
+      if ((fam === 'famine' || fam === 'cible') && !num(a.added)) return;
+      if (a.scope === 'global') { if (seen[fam]) return; seen[fam] = true; out.push(a); return; }
+      // Le détail page par page d'un chantier de gabarit déjà retenu n'est pas répété
+      if ((fam === 'gouffre' || fam === 'menu') && seen[fam]) return;
+      out.push(a);
+    });
+    return out;
+  }
+  function actionCard(C, a) {
+    var fam = a.family, tg = Array.isArray(a.targets) && a.targets.length ? nodeObj(C, a.targets[0]) : null;
+    var url = Array.isArray(a.target_urls) && a.target_urls.length ? a.target_urls[0] : (tg ? tg.url : null);
+    var page = a.scope === 'page' && url ? shorten(pathOf(url), 70) : null;
+    var problem = clean(a.problem, 400), title, why, proof;
+    var nLinks = num(a.added);
+    var rb = a.rank_before, ra = a.rank_after;
+    // Une sortie du modèle s'écrit au conditionnel, avec sa condition, jamais comme un fait daté
+    function rankProof(cond) {
+      return isNum(rb) && isNum(ra) ? 'Son rang d’autorité devrait passer d’environ ' + fmtNum(rb) + ' à environ ' + fmtNum(ra) + ' ' + cond +
+        ' (estimation du modèle).' : null;
+    }
+    // gain_pts : points d'autorité vers les classes money + acquisition, c'est-à-dire des types d'adresses
+    var gain = isNum(a.gain_pts) && a.gain_pts > 0 ? 'Estimation du modèle : environ +' + fmtNum(a.gain_pts, 1).replace(/,0$/, '') + ' ' +
+      plural(a.gain_pts, 'point', 'points') + ' d’autorité vers les ' + PRODUCTIVE_LABEL + '.' : null;
+    var gainText = a.gain_text ? 'Estimation du modèle : ' + clientWords(clean(a.gain_text, 140)) + '.' : null;
+    var m;
+    if (fam === 'gouffre' && a.scope === 'global') {
+      title = /^Regrouper/i.test(clean(a.title)) ? 'Regrouper les liens légaux sur une seule page' : 'Sortir les pages légales du menu';
+      m = /^(\d+)\s+pages?/.exec(problem);
+      var nl = m ? Number(m[1]) : C.legalCount;
+      why = (nl ? 'Les ' + fmtNum(nl) + ' pages' : 'Les pages') + ' légales et support captent ' + (C.waste != null ? pctA(C.waste) : 'une part') + ' de l’autorité.';
+      var S0 = C.scen, wAfter = S0 && S0.a && isNum(S0.a.waste_share) && a.id && S0.tickets.indexOf(clean(a.id, 16)) >= 0 ? S0.a.waste_share : null;
+      proof = 'Part d’autorité des pages légales' + (C.waste != null ? ' : ' + pctA(C.waste) + ' aujourd’hui, ' : ', ') +
+        (wAfter != null ? 'environ ' + pctA(wAfter) + ' avec les chantiers de gabarit' : 'en baisse') + ' (estimation du modèle).';
+    } else if (fam === 'gouffre') {
+      title = 'Retirer cette page du menu';
+      m = /dont\s+(\d+)\s+en menu/.exec(problem);
+      why = m ? 'Liée ' + fmtNum(Number(m[1])) + ' fois par le menu, le bandeau ou la barre latérale.' : firstSentence(problem, 110);
+      proof = rankProof('si la page sort du menu') || gain || gainText;
+    } else if (fam === 'famine' || fam === 'cible') {
+      title = 'Ajouter ' + fmtNum(nLinks) + ' ' + plural(nLinks, 'lien', 'liens') + ' dans le texte vers cette page';
+      var inl = tg ? num(tg.indeg) : null;
+      why = (tg && C.valueCol && num(tg.value) > 0 ? fmtVal(tg.value) + ' ' + C.unit(tg.value) + ', mais ' : 'Page utile, mais ') +
+        (inl != null ? fmtNum(inl) + ' ' + plural(inl, 'lien entrant', 'liens entrants') + ' seulement.' : 'peu de liens entrants.');
+      proof = rankProof(nLinks >= 2 ? 'si les liens proposés sont posés' : 'si le lien proposé est posé') || gainText;
+    } else if (fam === 'menu') {
+      m = /à\s+(\d+)\s+par page/.exec(clean(a.title));
+      var pm = /«\s*(\w+)\s*»/.exec(clean(a.title));
+      title = 'Alléger ' + (pm && POS_ART[pm[1]] ? POS_ART[pm[1]] : 'le menu') + (m ? ' à ' + m[1] + ' liens par page' : '');
+      var mm = /Jusqu.à\s+(\d+)/.exec(problem);
+      why = mm ? 'Jusqu’à ' + mm[1] + ' liens de menu par page diluent les liens du texte.' : firstSentence(problem, 110);
+      proof = gain || gainText;
+    } else if (fam === 'orphelines') {
+      var no = Array.isArray(a.target_urls) ? a.target_urls.length : 0;
+      title = 'Relier ' + (no ? fmtNum(no) + ' ' : '') + 'pages que rien ne relie';
+      why = 'Aucun lien n’y mène depuis l’accueil : elles ne reçoivent que le minimum d’autorité.';
+      proof = 'Ces pages devraient être atteignables depuis l’accueil, une fois les liens posés.';
+    } else if (fam === 'trou_noir') {
+      title = 'Ajouter des liens sortants à cette page';
+      why = 'Elle reçoit de l’autorité mais n’a aucun lien sortant.';
+      proof = gain || 'La page devrait renvoyer son autorité vers d’autres pages du site, une fois les liens posés.';
+    } else if (fam === 'nofollow') {
+      title = 'Retirer le nofollow des liens internes';
+      why = 'Un lien interne en nofollow perd l’autorité qu’il devrait transmettre.';
+      proof = 'Plus aucun lien interne en nofollow, une fois le gabarit corrigé.';
+    } else {
+      title = shorten(clean(a.title), 70);
+      why = firstSentence(problem, 110);
+      proof = gain || gainText;
+    }
+    // Un chantier de gabarit qui fait baisser l'alignement dans la simulation ne s'affiche pas sans le dire
+    var S = C.scen, alert = !!(S && S.down && a.id && S.tickets.indexOf(clean(a.id, 16)) >= 0);
+    if (alert) proof = 'Simulés ensemble, les chantiers de gabarit feraient baisser l’alignement (' + S.bI + ' → ' + S.aI + '), estimation du modèle.';
+    return { title: title, page: page, why: why, proof: proof || 'À mesurer à la prochaine analyse.', alert: alert,
+      template: !!(a.effort && a.effort.type === 'template') };
+  }
+  // Remplace le vocabulaire interne des textes de gain de l'outil par celui du client
+  function clientWords(t) {
+    return String(t).replace(/money et acquisition/g, PRODUCTIVE_LABEL).replace(/\bpt\b/g, 'point').replace(/\(s\)/g, 's')
+      .replace(/(\d)\.(\d)/g, '$1,$2').replace(/\.$/, '');
+  }
+  function slidePlan(C) {
+    var acts = planActions(C);
+    if (!acts.length) return null;
+    var n = acts.length, total = Array.isArray(C.d.actions) ? C.d.actions.length : n;
+    C.planIds = acts.map(function (a) { return a && a.id ? clean(a.id, 16) : ''; });
+    // Les cartes sont les premières du plan, pas tout le plan : le titre le dit (m10)
+    var title = n < total
+      ? [{ em: (n === 1 ? 'Le premier' : 'Les ' + NUM_WORDS[n] + ' premiers') }, ' des ' + fmtNum(total) + ' chantiers du plan d’action.']
+      : [{ em: n === 1 ? 'Le chantier' : 'Les ' + NUM_WORDS[n] + ' chantiers' }, ' du plan d’action.'];
+    var s = makeSlide(C, { rail: 'Ce qu’il faut faire', eyebrow: 'Le plan d’action', source: 'Source : plan d’action prgraph, effets estimés par le modèle', title: title });
+    var g = el('div', 'pr-etapes');
+    g.style.gridTemplateColumns = 'repeat(' + Math.max(n, 3) + ', 1fr)';
+    acts.forEach(function (a, k) {
+      var c = actionCard(C, a), card = el('div', 'pr-etape');
+      var head = el('div', 'pr-etape-tete');
+      add(head, el('div', 'pr-etape-n', pad2(k + 1)), el('span', 'pr-chip ' + (c.template ? 'pr-chip-gabarit' : 'pr-chip-edito'), c.template ? 'Gabarit' : 'Éditorial'));
+      card.appendChild(head);
+      // L'identifiant de l'action relie la carte au plan complet et à l'avant / après
+      if (C.planIds[k]) card.appendChild(el('div', 'pr-etape-id', 'Action ' + C.planIds[k]));
+      card.appendChild(el('h3', 'pr-etape-t', c.title));
+      if (c.page) card.appendChild(el('div', 'pr-chemin', c.page));
+      card.appendChild(el('p', 'pr-pourquoi', c.why));
+      var saura = el('div', 'pr-saura');
+      add(saura, el('b', null, c.alert ? 'Avant de lancer' : 'Contrôle à la prochaine analyse'), c.proof);
+      if (c.alert) { var rf = el('span'); rf.setAttribute('data-ref', 'avant'); rf.setAttribute('data-pre', ' Voir '); rf.setAttribute('data-post', '.'); saura.appendChild(rf); }
+      card.appendChild(saura);
+      g.appendChild(card);
+    });
+    s.appendChild(g);
+    s.appendChild(el('p', 'pr-petit', 'Dans l’ordre du plan. Gabarit : un changement de composant, pour tout le site. Éditorial : des liens à poser page par page. ' +
+      'Rangs et parts : estimations du modèle, à contrôler à la prochaine analyse du site.'));
+    return finish(s);
+  }
+
+  // 12 · Avant / après les chantiers de gabarit (ou levier éditorial si l'écart est négligeable)
+  // Le titre suit le signe de l'effet simulé (une baisse n'est jamais titrée comme un progrès), les chantiers
+  // simulés sont nommés par leurs identifiants du plan, et la part « qui fait la valeur » est celle des pages qui
+  // cumulent 80 % de la valeur mesurée (value_pages_share), jamais une part de classes d'adresses.
+  function slideAvantApres(C, refs) {
+    var S = C.scen;
+    if (!S) return null;
+    var b = S.b, a = S.a, sc = S.sc;
+    var src = 'Source : simulation du modèle prgraph';
+    var simNames = ticketsText(C, S);
+    var vpLabel = C.vp ? (C.vp.n === 1 ? 'de la page qui fait ' : 'des ' + fmtNum(C.vp.n) + ' pages qui font ') + pctI(C.vp.share) + ' ' + C.v.of : null;
+    var caveat = C.valueCol && C.traffic ? el('p', 'pr-garde', trafficCaveat(C)) : null;
+    var s;
+    if (S.negligible) {
+      s = makeSlide(C, { rail: 'Ce qu’il faut faire', eyebrow: 'Avant / après', source: src, title: ['Nettoyer le gabarit ', { em: 'ne suffit pas ici' }, '.'] });
+      var ws = C.ws, lev = el('div', 'pr-levier');
+      // Points de départ des liens à ajouter : les rubriques les plus fortes, hors pire écart et hors rubriques
+      // faites surtout de pages de conversion (on ne suggère pas de prendre leur autorité pour la donner au blog)
+      var money = moneyShareByFamily(C);
+      var fams = C.families.filter(function (f) {
+        if (f.name === 'autres' || (ws && (ws.family ? isWsFam(C, f) : sameFamily(C, f, ws.segment)))) return false;
+        return !(num(money[C.families.indexOf(f)]) >= 0.5);
+      }).sort(function (x, y) { return num(y.pr_share) - num(x.pr_share); }).slice(0, 3);
+      var srcs = el('div');
+      if (fams.length) srcs.appendChild(el('div', 'pr-k', 'Pages fortes, d’où ajouter des liens'));
+      fams.forEach(function (f, k) {
+        var r = el('div', 'pr-source');
+        if (k === 0) r.style.marginTop = '10px';
+        add(r, el('span', 'pr-source-n', 'Pages ' + famPhrase(f.name)), el('span', 'pr-source-v', pctI(f.pr_share)));
+        srcs.appendChild(r);
+      });
+      lev.appendChild(srcs);
+      // Flèches « liens ajoutés » vers la rubrique la plus sous-alimentée (aucune quand aucune source ne convient)
+      var H = Math.max(1, fams.length) * 66 + 24, AW = CW - 330 - 380, arr = sv('svg', { width: AW, height: H, viewBox: '0 0 ' + AW + ' ' + H, 'aria-hidden': 'true' });
+      if (fams.length) {
+        fams.forEach(function (f, k) {
+          var y = 24 + 26 + k * 66;
+          arr.appendChild(sv('path', { d: 'M16 ' + y + 'C ' + (AW / 2) + ' ' + y + ', ' + (AW / 2) + ' ' + (H / 2) + ', ' + (AW - 40) + ' ' + (H / 2) }, { fill: 'none', stroke: '#8f8e88', 'stroke-width': '2.5px' }));
+        });
+        arr.appendChild(sv('path', { d: 'M' + (AW - 40) + ' ' + (H / 2 - 8) + 'L' + (AW - 22) + ' ' + (H / 2) + 'L' + (AW - 40) + ' ' + (H / 2 + 8) + 'Z' }, { fill: '#8f8e88' }));
+        arr.appendChild(svText(AW / 2, 14, '+ liens dans le texte', { 'text-anchor': 'middle' }, { fill: INK2, 'font-size': '13px', 'font-weight': '600' }));
+      }
+      lev.appendChild(arr);
+      var cible = el('div', 'pr-cible');
+      cible.appendChild(el('div', 'pr-k', ws ? (ws.family ? 'La rubrique la plus sous-alimentée' : 'Le segment le plus sous-alimenté') : 'Les pages à renforcer'));
+      if (ws) {
+        cible.appendChild(el('div', 'pr-cible-nom', wsName(C)));
+        var l1 = el('div', 'pr-cible-l'); add(l1, el('b', null, pctI(ws.pr_share)), 'de l’autorité');
+        var l2 = el('div', 'pr-cible-l'); add(l2, el('b', null, pctI(ws.value_share)), C.v.of);
+        cible.appendChild(l1); cible.appendChild(l2);
+      }
+      lev.appendChild(cible);
+      s.appendChild(lev);
+      var rt = el('p', 'pr-retenir');
+      add(rt, el('b', null, 'À retenir'), 'Le levier est éditorial : ajouter des liens dans le texte vers ' + (ws ? wsName(C) : 'les pages à renforcer') +
+        ' depuis les pages les plus fortes, sans retirer ceux qui mènent aux pages de conversion.');
+      if (refs.plan) { add(rt, ' Détail dans le plan d’action, '); var rr = el('span'); rr.setAttribute('data-ref', 'plan'); rt.appendChild(rr); add(rt, '.'); }
+      var sim = el('p', 'pr-changes');
+      sim.style.marginTop = '26px';
+      if (simNames) add(sim, el('b', null, 'Chantiers de gabarit simulés ensemble : '), simNames + '. ');
+      add(sim, el('b', null, 'Résultat : '), 'alignement ' + alPair(S) +
+        (vpLabel && S.vpB != null ? ' ; part de l’autorité ' + vpLabel + ' : ' + pct2(S.vpB) + ' → ' + pct2(S.vpA)
+          : (isNum(b.productive_share) && isNum(a.productive_share) ? ' ; part de l’autorité des ' + PRODUCTIVE_LABEL + ' : ' + pct(b.productive_share, 1) + ' → ' + pct(a.productive_share, 1) : '')) +
+        '. Sortie du modèle, pas une prédiction de trafic.');
+      s.appendChild(sim);
+      bottomStack(s, [rt, caveat]);
+      return finish(s);
+    }
+    var title = S.up ? ['Les chantiers de gabarit portent l’alignement de ' + S.bI + ' à ', { em: S.aI + ' sur 100' }, '.']
+      : S.down ? ['Les chantiers de gabarit seuls feraient baisser l’alignement (' + S.bI + ' → ' + S.aI + ').']
+        : ['Les chantiers de gabarit laissent l’alignement inchangé (' + S.bI + ').'];
+    s = makeSlide(C, { rail: 'Ce qu’il faut faire', eyebrow: 'Avant / après', source: src, title: title });
+    var duo = el('div', 'pr-duo');
+    function column(tt, st, other, cls) {
+      var c = el('div', 'pr-col' + (cls ? ' ' + cls : ''));
+      c.appendChild(el('div', 'pr-col-t', tt));
+      function metric(k, v, dv) {
+        var m = el('div', 'pr-metrique');
+        m.appendChild(el('div', 'pr-m-k', k));
+        var vv = el('div', 'pr-m-v', v);
+        // Écart en couleur d'accent seulement quand il monte
+        if (dv) vv.appendChild(el('span', dv.up ? null : 'pr-neutre', dv.text));
+        m.appendChild(vv);
+        c.appendChild(m);
+      }
+      var stI = Math.round(num(st.alignment));
+      metric('Score d’alignement', stI + ' / 100', other ? (S.aI === S.bI ? { text: 'inchangé', up: false } : { text: (S.aI > S.bI ? '+' : '−') + Math.abs(S.aI - S.bI) + ' pt', up: S.aI > S.bI }) : null);
+      if (vpLabel && S.vpB != null) {
+        var vv_ = other ? S.vpA : S.vpB;
+        metric('Part de l’autorité ' + vpLabel, pct2(vv_), other ? delta(100 * S.dV, 2) : null);
+      } else if (isNum(st.productive_share)) {
+        metric('Part de l’autorité des ' + PRODUCTIVE_LABEL, pct(st.productive_share, 1),
+          other && isNum(other.productive_share) ? delta(100 * (st.productive_share - other.productive_share), 1) : null);
+      }
+      var wsv = wsShare(C, st), wso = other ? wsShare(C, other) : null;
+      if (isNum(wsv))
+        metric('Part de l’autorité de ' + wsName(C), pct(wsv, 1), isNum(wso) ? delta(100 * (wsv - wso), 1) : null);
+      return c;
+    }
+    duo.appendChild(column('Aujourd’hui', b, null, ''));
+    var fl = el('div', 'pr-fleche'), fsv = sv('svg', { width: 34, height: 24, viewBox: '0 0 34 24', 'aria-hidden': 'true' });
+    fsv.appendChild(sv('path', { d: 'M2 12H28M20 4l9 8-9 8' }, { fill: 'none', stroke: S.up ? 'var(--pr-accent)' : INK2, 'stroke-width': '2.5', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+    fl.appendChild(fsv);
+    duo.appendChild(fl);
+    duo.appendChild(column('Après les chantiers de gabarit (simulation)', a, b, 'pr-apres' + (S.up ? '' : ' pr-baisse')));
+    s.appendChild(duo);
+    var ch = Array.isArray(sc.changes) ? sc.changes.map(cleanChange).filter(Boolean).slice(0, 3) : [];
+    if (simNames || ch.length) {
+      var p = el('p', 'pr-changes');
+      if (simNames) { add(p, el('b', null, 'Chantiers simulés ensemble : '), simNames + '. '); }
+      if (ch.length) add(p, el('b', null, 'Ce qui change : '), cap1(ch.join(' ; ')) + '.');
+      s.appendChild(p);
+    }
+    bottomStack(s, [el('p', 'pr-petit', 'Sortie du modèle, pas une prédiction de trafic.' +
+      (S.down ? ' Simulés seuls, ces chantiers font baisser l’alignement : à arbitrer avant de les lancer.' : '')), caveat]);
+    return finish(s);
+  }
+  function signed(v, d, unit) { if (Math.abs(v) < Math.pow(10, -(d || 0)) / 2) return '=' ; return (v > 0 ? '+' : '−') + fmtNum(Math.abs(v), d) + (unit || ''); }
+  function delta(v, d) { var t = signed(v, d, ' pt'); return { text: t === '=' ? 'inchangé' : t, up: t.charAt(0) === '+' }; }
+  // « SEO-05 (carte 05 du plan), SEO-16 (plan complet) » : le client retrouve les cartes simulées
+  function ticketsText(C, S) {
+    var ids = C.planIds || [];
+    var l = S.tickets.map(function (t) { var k = ids.indexOf(t); return t + (k >= 0 ? ' (carte ' + pad2(k + 1) + ' du plan)' : ' (plan complet)'); });
+    return l.length > 1 ? l.slice(0, -1).join(', ') + ' et ' + l[l.length - 1] : (l[0] || '');
+  }
+  function cleanChange(t) {
+    var s = clean(t, 180);
+    var m = /(\d+)/.exec(s), many = m ? Number(m[1]) >= 2 : true;
+    s = s.replace(/\(s\)/g, many ? 's' : '').replace(/«\s*(\w+)\s*»/g, function (all, p) { return '« ' + (POS_LABEL[p] || p) + ' »'; });
+    s = s.replace(/légales \/ support/g, 'légales et support').replace(/légale \/ support/g, 'légale et support');
+    // Milliers séparés comme ailleurs dans le deck (jamais dans une adresse : le nombre doit être isolé)
+    s = s.replace(/(^|[\s(])(\d{4,})(?=[\s),;.]|$)/g, function (all, pre, n) { return pre + fmtNum(Number(n)); });
+    return s;
+  }
+
+  // 13 · Méthode (une seule fois)
+  function slideMethode(C, n) {
+    var s = makeSlide(C, { rail: 'Méthode', eyebrow: pad2(n) + ' · Méthode', title: ['Comment lire ', { em: 'ces chiffres' }, '.'],
+      source: 'prgraph ' + (C.version || '') });
+    var ul = el('ul', 'pr-methode');
+    function li(b, t) { var x = el('li'); add(x, el('b', null, b + ' : '), t); ul.appendChild(x); }
+    var w = C.meta.weights && typeof C.meta.weights === 'object' ? C.meta.weights : null, wl = [];
+    if (w) ['content', 'breadcrumb', 'sidebar', 'header', 'nav', 'footer'].forEach(function (k) { if (isNum(w[k])) wl.push(POS_LABEL[k] + ' ' + fmtNum(w[k], w[k] % 1 ? 2 : 0).replace(/(,\d)0$/, '$1')); });
+    li('Poids des liens', 'un lien dans le texte compte plus qu’un lien de menu' + (wl.length ? ' (' + wl.join(' ; ') + ')' : '') +
+      '. Ces poids sont une hypothèse de praticien, inspirée du brevet Google du surfeur raisonnable (reasonable surfer).');
+    li('Un ordre, pas une prédiction', 'le modèle classe les pages entre elles ; il ne prédit ni positions dans Google ni trafic. Rangs et gains annoncés sont des estimations du modèle.');
+    li('Pages orphelines', 'leur nombre est un plancher : un crawl ne trouve pas les pages que rien ne relie.');
+    // La phrase sur le rendu JavaScript ne vaut que pour un crawl de l'outil
+    if (C.linksFrom === 'crawl') li('Liens lus dans le HTML servi', 'pas de rendu JavaScript : un lien ajouté par un script n’est pas compté.');
+    else if (C.linksFrom === 'export') li('Liens', 'liens fournis par l’export ; leur rendu JavaScript dépend du réglage de l’outil qui l’a produit.');
+    else li('Liens', 'lus dans le HTML servi, sans rendu JavaScript, quand le site est crawlé par l’outil ; tels que fournis quand ils viennent d’un export.');
+    li('Périmètre', fmtNum(C.nPages) + ' pages et ' + fmtNum(C.nLinks) + ' liens analysés' +
+      (C.meta.truncated && isNum(C.meta.exported_nodes) ? ', dont ' + fmtNum(C.meta.exported_nodes) + ' pages affichées' : '') + '.');
+    if (!C.valueCol) {
+      li('Valeur', 'aucune source fournie ; la comparaison se fait avec une répartition cible par défaut.');
+      li('Pages mal reliées', 'non repérées : il faut un export Search Console (clics) ou les ventes par page pour savoir lesquelles comptent.');
+    } else if (C.traffic) {
+      li('Mesure de référence', C.measureText + ' (colonne « ' + clean(C.valueCol, 30) + ' »). C’est du trafic : elle dit quelles pages Google fait visiter, ' +
+        'pas lesquelles rapportent ; les pages de conversion y sont sous-estimées.');
+    } else {
+      li('Valeur', C.measureText + ' (colonne « ' + clean(C.valueCol, 30) + ' ») : elle dit quelles pages rapportent.');
+    }
+    li('Score d’alignement', '100 = l’autorité se répartit par type de page comme ' + (C.valueCol ? C.v.the : 'la cible') +
+      ' ; sous 70 : désaligné ; 70 à 85 : à corriger ; au-dessus : aligné, à vérifier rubrique par rubrique.');
+    li('Outil', 'prgraph ' + (C.version || '') + (C.date ? ', analyse du ' + C.date : '') + '.');
+    s.appendChild(ul);
+    return finish(s);
+  }
+
+  // Diapositive de secours si les données manquent
+  function slideVide(C) {
+    var s = makeSlide(C, { rail: 'Présentation', eyebrow: 'Présentation', title: ['Données ', { em: 'indisponibles' }, '.'], source: '' });
+    s.appendChild(el('p', 'pr-lead', 'Le rapport ne contient pas les données de l’analyse : relancez l’export pour obtenir la présentation.'));
+    return finish(s);
+  }
+
+  // ── Assemblage, numérotation, renvois de page ─────────────────────────────
+  function safe(fn) {
+    try { return fn(); } catch (e) { if (window.console) console.warn('prgraph présentation : diapositive omise', e); return null; }
+  }
+  function applyAccent(C) {
+    var c = C.brand.color || DEFAULT_ACCENT;
+    // Une couleur de marque trop claire est assombrie jusqu'à 3:1 sur le papier, pour le texte comme pour tous
+    // les tracés (barres, flèches, cadres, puces) : aucun ne doit disparaître sur un blanc ou un jaune pâle
+    var ink = contrast(c, PAPER) >= 3 ? c : towards(c, '#000000', PAPER, 3);
+    // Une marque sans teinte (blanc, gris) se confondrait avec le gris neutre des graphiques : foncée davantage
+    var rgbI = hexRgb(ink), base = ink, t = 0;
+    if (Math.max.apply(null, rgbI) - Math.min.apply(null, rgbI) < 40)
+      while (contrast(ink, NEUTRAL) < 2 && t < 1) { t += 0.05; ink = mix(base, '#000000', t); }
+    var dk = towards(c, '#ffffff', DARK, 4.5);
+    var rgb = hexRgb(ink);
+    root.style.setProperty('--pr-accent', ink);
+    root.style.setProperty('--pr-accent-ink', ink);
+    root.style.setProperty('--pr-accent-dk', C.brand.color ? dk : '#6da7ec');
+    root.style.setProperty('--pr-accent-wash', 'rgba(' + rgb.join(', ') + ', .09)');
+    root.style.setProperty('--pr-on-accent', inkOn(ink));
+    C.accent = ink;
+  }
+  function buildSlides() {
+    var P = window.PRGRAPH || {}, d = P.data && typeof P.data === 'object' ? P.data : null;
+    if (!d) { var C0 = context({}); applyAccent(C0); return [slideVide(C0)]; }
+    var C = context(d);
+    applyAccent(C);
+    var refs = {};
+    // Le plan d'abord (il fixe les numéros de carte que l'avant / après cite), puis l'avant / après
+    var plan = safe(function () { return slidePlan(C); });
+    if (plan) refs.plan = plan;
+    var avant = safe(function () { return slideAvantApres(C, refs); });
+    if (avant) refs.avant = avant;
+    var lead1 = !C.valueCol ? 'Votre site donne-t-il son autorité aux bonnes pages ?'
+      : 'Votre site donne-t-il son autorité aux pages ' + (C.kind === 'business' && C.v.generic ? 'qui rapportent' : doing(C, 2)) + ' ?';
+    var parts = [
+      { title: 'Le constat', lead: lead1, sub: 'Le verdict, ' + C.v.short + ' face à l’autorité',
+        slides: [safe(function () { return slideVerdict(C); }), safe(function () { return slideValeur(C); })] },
+      { title: 'Où va l’autorité', lead: 'Les rubriques, les menus, les pages oubliées.',
+        sub: 'Les silos, le gabarit' + (C.valueCol ? ', les pages mal reliées' : ''),
+        slides: [safe(function () { return slideSilos(C); }), safe(function () { return slideGabarit(C); }), safe(function () { return slideAffamees(C); })] },
+      { title: 'Ce qu’il faut faire', lead: 'Les chantiers dans l’ordre, et ce qu’il faudra contrôler.', sub: 'Le plan d’action et son effet estimé',
+        slides: [plan, avant] }
+    ];
+    var seq = [safe(function () { return slideCover(C); }), null], toc = [], no = 0;
+    parts.forEach(function (p) {
+      var ss = p.slides.filter(Boolean);
+      if (!ss.length) return;
+      no++;
+      toc.push({ n: no, title: p.title, sub: p.sub, page: seq.length + 1 });
+      seq.push(safe(function () { return slideTransition(C, no, p); }));
+      ss.forEach(function (x) { seq.push(x); });
+    });
+    no++;
+    toc.push({ n: no, title: 'Méthode', sub: 'Comment lire ces chiffres', page: seq.length + 1 });
+    seq.push(safe(function () { return slideMethode(C, no); }));
+    seq[1] = safe(function () { return slideSommaire(C, toc); });
+    seq = seq.filter(Boolean);
+    var total = seq.length;
+    seq.forEach(function (s, k) {
+      var r = s.querySelector('.pr-rail-num');
+      if (r) r.textContent = pad2(k + 1);
+      var pg = s.querySelector('.pr-pied-page');
+      if (pg) pg.textContent = pad2(k + 1);
+      s.setAttribute('aria-label', (k + 1) + ' / ' + total + (s._label ? ' : ' + s._label : ''));
+    });
+    seq.forEach(function (s) {
+      Array.prototype.forEach.call(s.querySelectorAll('[data-ref]'), function (r) {
+        var t = refs[r.getAttribute('data-ref')], k = t ? seq.indexOf(t) : -1;
+        r.textContent = k >= 0 ? (r.getAttribute('data-pre') || '') + 'p. ' + (k + 1) + (r.getAttribute('data-post') || '') : '';
+      });
+    });
+    return seq;
+  }
+
+  // ── Interface à l'écran : scène, commandes, clavier, balayage ──────────────
+  function icon(d) {
+    var g = sv('svg', { viewBox: '0 0 16 16', 'aria-hidden': 'true', focusable: 'false' });
+    g.appendChild(sv('path', { d: d }, { fill: 'none', stroke: 'currentColor', 'stroke-width': '1.8', 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
+    return g;
+  }
+  function button(label, shortLabel, d, onClick) {
+    var b = el('button', 'pr-btn');
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    b.title = label;
+    if (d) b.appendChild(icon(d));
+    if (shortLabel) b.appendChild(el('span', 'pr-long', shortLabel));
+    b.addEventListener('click', onClick);
+    return b;
+  }
+  function buildUi() {
+    root.setAttribute('role', 'region');
+    var stage = el('div', 'pr-stage'), frame = el('div', 'pr-frame'), deck = el('div', 'pr-deck');
+    frame.appendChild(deck); stage.appendChild(frame);
+    state.slides = buildSlides();
+    state.slides.forEach(function (s) { deck.appendChild(s); });
+    var bar = el('div', 'pr-bar');
+    state.prev = button('Diapositive précédente', 'Précédente', 'M10 3L5 8l5 5', function () { go(state.current - 1, true); });
+    state.next = button('Diapositive suivante', 'Suivante', 'M6 3l5 5-5 5', function () { go(state.current + 1, true); });
+    state.counter = el('div', 'pr-count');
+    state.counter.setAttribute('aria-live', 'polite');
+    var pdf = button('Exporter en PDF', 'Exporter en PDF', 'M8 2v8M4.5 6.5L8 10l3.5-3.5M3 13h10', function () { window.print(); });
+    var back = button('Retour à l’analyse', 'Retour à l’analyse', 'M6.5 4L2.5 8l4 4M3 8h10', exitToAnalyse);
+    add(bar, state.prev, state.counter, state.next, el('div', 'pr-spacer'), pdf, back);
+    root.replaceChildren(stage, bar);
+    state.stage = stage; state.frame = frame; state.deck = deck;
+    // Balayage horizontal sur écran tactile
+    stage.addEventListener('pointerdown', function (e) { state.pointer = { x: e.clientX, y: e.clientY }; });
+    stage.addEventListener('pointerup', function (e) {
+      var p = state.pointer; state.pointer = null;
+      if (!p) return;
+      var dx = e.clientX - p.x, dy = e.clientY - p.y;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) go(state.current + (dx < 0 ? 1 : -1), true);
+    });
+    stage.addEventListener('pointercancel', function () { state.pointer = null; });
+    state.built = true;
+  }
+  function fit() {
+    if (!state.open || !state.stage) return;
+    var w = state.stage.clientWidth, h = state.stage.clientHeight;
+    var pad = w < 600 ? 16 : 28;
+    var k = Math.max(0.05, Math.min((w - 2 * pad) / SW, (h - 2 * pad) / SH));
+    state.frame.style.width = Math.floor(SW * k) + 'px';
+    state.frame.style.height = Math.floor(SH * k) + 'px';
+    state.deck.style.transform = 'scale(' + k + ')';
+  }
+  function go(i, focus) {
+    var n = state.slides.length;
+    if (!n) return;
+    i = Math.max(0, Math.min(n - 1, i));
+    state.slides.forEach(function (s, k) {
+      var on = k === i;
+      s.classList.toggle('is-current', on);
+      if (on) s.removeAttribute('aria-hidden'); else s.setAttribute('aria-hidden', 'true');
+    });
+    state.current = i;
+    state.counter.textContent = (i + 1) + ' / ' + n;
+    state.prev.disabled = i === 0;
+    state.next.disabled = i === n - 1;
+    if (focus) { try { state.slides[i].focus({ preventScroll: true }); } catch (e) { state.slides[i].focus(); } }
+  }
+  function exitToAnalyse() {
+    var P = window.PRGRAPH;
+    if (P && typeof P.setMode === 'function') P.setMode('analyse');
+    else close();
+  }
+  function onKey(e) {
+    if (!state.open || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target, tag = t && t.tagName ? t.tagName.toLowerCase() : '';
+    var onControl = tag === 'button' || tag === 'input' || tag === 'select' || tag === 'textarea' || (t && t.isContentEditable);
+    var k = e.key;
+    if (k === 'Escape' || k === 'Esc') { e.preventDefault(); exitToAnalyse(); return; }
+    if (onControl && (k === ' ' || k === 'Spacebar' || k === 'Enter')) return;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || ((k === ' ' || k === 'Spacebar') && !e.shiftKey)) { e.preventDefault(); go(state.current + 1, true); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || ((k === ' ' || k === 'Spacebar') && e.shiftKey)) { e.preventDefault(); go(state.current - 1, true); }
+    else if (k === 'Home') { e.preventDefault(); go(0, true); }
+    else if (k === 'End') { e.preventDefault(); go(state.slides.length - 1, true); }
+  }
+
+  // ── API publique ──────────────────────────────────────────────────────────
+  function open() {
+    if (!state.built) buildUi();
+    // Le mode Analyse pose data-mode ; à défaut (page autonome), la présentation le pose et le retire à la fermeture
+    if (document.body && !document.body.hasAttribute('data-mode')) { document.body.setAttribute('data-mode', 'presentation'); state.modeSetByMe = true; }
+    root.hidden = false;
+    state.open = true;
+    fit();
+    go(state.current, true);
+  }
+  function close() {
+    root.hidden = true;
+    state.open = false;
+    if (state.modeSetByMe && document.body) { document.body.removeAttribute('data-mode'); state.modeSetByMe = false; }
+  }
+  document.addEventListener('keydown', onKey);
+  window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+  window.PRGRAPH_PRESENT = { open: open, close: close };
+})();
+</script>

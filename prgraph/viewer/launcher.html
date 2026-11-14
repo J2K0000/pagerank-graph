@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="prgraph-token" content="__PRGRAPH_TOKEN__">
+<title>PageRank interne : lancer une analyse</title>
+<style>
+:root{--bg:#0b0f14;--surface:#0f141a;--surface-2:#141b23;--line:#1f2a36;--line-2:#2b3a4a;--ink:#eef2f6;--ink-2:#a9b6c4;--ink-3:#6b7a8b;--accent:#f2c14e;--crit:#d03b3b;--good:#0ca30c;
+ --mono:ui-monospace,"Cascadia Mono","SF Mono",Consolas,Menlo,monospace;--sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--serif:var(--sans)}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:
+ radial-gradient(900px 500px at 70% 10%,rgba(57,135,229,.10),transparent 60%),
+ repeating-linear-gradient(0deg,transparent 0 39px,rgba(255,255,255,.025) 39px 40px),
+ repeating-linear-gradient(90deg,transparent 0 39px,rgba(255,255,255,.025) 39px 40px),var(--bg);
+ color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:48px 20px 80px}
+h1{font-family:var(--serif);font-weight:700;font-size:36px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
+h1 em{color:var(--accent)}
+.lead{color:var(--ink-2);max-width:640px;margin:0 0 28px}
+.card{background:rgba(15,20,26,.92);border:1px solid var(--line);border-radius:12px;padding:22px 24px;margin-bottom:18px;backdrop-filter:blur(6px)}
+label{display:block;color:var(--ink-2);font-size:12px;margin-bottom:4px}
+input[type=text],input[type=number],select{width:100%;background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:10px 12px;color:var(--ink);font:inherit;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+.urlrow{display:flex;gap:10px;align-items:stretch}
+.urlrow input{font-family:var(--mono);font-size:15px;flex:1}
+.btn{background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:10px 16px;cursor:pointer;color:var(--ink);font:inherit;white-space:nowrap}
+.btn.primary{background:var(--accent);color:#1a1405;border-color:var(--accent);font-weight:600;font-size:15px;padding:10px 22px}
+.btn:disabled{opacity:.5;cursor:default}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}
+.check{display:flex;align-items:center;gap:8px;color:var(--ink-2);padding-top:22px}
+.check input{accent-color:var(--accent)}
+details summary{cursor:pointer;color:var(--ink-3);font-size:12px;margin-top:12px}
+.status{display:none}
+.status.on{display:block}
+.phase{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(242,193,78,.6);animation:pulse 1.4s infinite}
+.dot.done{background:var(--good);animation:none}.dot.err{background:var(--crit);animation:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(242,193,78,.6)}100%{box-shadow:0 0 0 12px rgba(242,193,78,0)}}
+.big{font-family:var(--serif);font-weight:700;font-size:28px;line-height:1;letter-spacing:-.02em}
+.big small{font-family:var(--sans);font-size:12px;color:var(--ink-3);margin-left:8px}
+pre{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--ink-2);max-height:220px;overflow:auto;margin:10px 0 0;white-space:pre-wrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--ink-3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 6px;border-bottom:1px solid var(--line)}
+td{padding:9px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+td.num{text-align:right;font-family:var(--mono)}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.mono{font-family:var(--mono);font-size:12px}
+.note{color:var(--ink-3);font-size:12px;margin-top:10px}
+.err{color:#ff8f8f}
+h2{font-family:var(--serif);font-weight:650;font-size:18px;margin:0 0 12px;letter-spacing:-.01em}
+fieldset.biz{border:1px solid var(--line);border-radius:10px;padding:12px 14px 14px;margin:16px 0 0}
+fieldset.biz legend{color:var(--ink-2);font-size:12px;padding:0 6px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px}
+.seg label{display:flex;align-items:center;gap:6px;border:1px solid var(--line-2);border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--ink-2);font-size:13px;margin:0}
+.seg label:has(input:checked){border-color:var(--accent);color:var(--ink);background:rgba(242,193,78,.08)}
+.seg input{accent-color:var(--accent);margin:0}
+.bizpane{display:none}.bizpane.on{display:block}
+.caps{display:inline-block;margin-right:12px}.caps b{color:var(--good)}.caps b.ko{color:#ff8f8f}
+.hint{color:var(--ink-3);font-size:11px;line-height:1.35;margin:4px 0 0}
+.fielderr{color:#ff8f8f;font-size:13px;margin:6px 0 0}
+input[aria-invalid=true]{border-color:var(--crit)}
+.joberr{margin-top:10px;padding:10px 12px;border:1px solid var(--crit);border-radius:8px;background:rgba(208,59,59,.12);color:#ffb3b3}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>PageRank interne <em>·</em> cartographie du jus</h1>
+  <p class="lead">Entrez l'adresse d'un site : il est crawlé (robots.txt respecté), le graphe nettoyé (301, canonical, 404, nofollow), le PageRank pondéré calculé, puis le rapport interactif s'ouvre.</p>
+
+  <div class="card">
+    <form id="form" novalidate>
+      <label for="url">Adresse du site à analyser</label>
+      <div class="urlrow">
+        <input type="text" id="url" placeholder="https://www.exemple.fr" autocomplete="off" spellcheck="false" required aria-required="true" aria-describedby="url_err">
+        <button class="btn primary" type="submit" id="go">Analyser</button>
+      </div>
+      <p class="fielderr" id="url_err" role="alert" hidden></p>
+      <div class="opts">
+        <div><label for="max_pages">Pages maximum</label><input type="number" id="max_pages" value="500" min="10" max="50000" aria-describedby="max_pages_hint"><p class="hint" id="max_pages_hint">Au-delà, le rapport est partiel : les pages non crawlées sont comptées comme des fuites.</p></div>
+        <div><label for="delay">Délai entre requêtes (s)</label><input type="number" id="delay" value="0.3" min="0.1" step="0.1"></div>
+        <div><label for="workers">Requêtes parallèles</label><input type="number" id="workers" value="4" min="1" max="16"></div>
+        <div><label for="weights_profile">Poids des liens</label><select id="weights_profile"><option value="raisonnable">Surfeur raisonnable</option><option value="modere">Surfeur raisonnable, modéré</option><option value="uniform">Naïf 1998 (tous égaux)</option></select></div>
+        <div><label for="dangling">Culs-de-sac</label><select id="dangling"><option value="uniform">Redistribution uniforme</option><option value="home">Vers l'accueil</option></select></div>
+        <label class="check"><input type="checkbox" id="respect_robots" checked> Respecter robots.txt</label>
+        <label class="check"><input type="checkbox" id="include_subdomains"> Inclure les sous-domaines</label>
+      </div>
+      <fieldset class="biz">
+        <legend>Pages à pousser (optionnel)</legend>
+        <p class="note" style="margin-top:0">Les URL que vous voulez positionner : articles qui rankent sur des requêtes business, offres, pages piliers. Une par ligne (URL complète, chemin, ou regex). Elles deviennent la priorité du rapport : classe money, cible d'alignement, tickets « Renforcer une cible choisie » avec les émetteurs du même silo. Modifiable ensuite dans l'onglet Cibles à pousser du rapport.</p>
+        <textarea id="strategic_urls" rows="3" placeholder="/blog/comment-calculer-une-prime&#10;/offres/.*&#10;https://www.exemple.fr/guide-complet" style="width:100%;background:var(--surface-2);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;color:var(--ink);font:12px var(--mono);resize:vertical"></textarea>
+      </fieldset>
+      <fieldset class="biz">
+        <legend>Données business</legend>
+        <p class="note" style="margin-top:0">Croiser le PageRank avec la valeur des pages (chiffre d'affaires, conversions, clics, impressions). Les données sont lues sur cette machine ; les identifiants Google viennent de la variable <span class="mono">GOOGLE_APPLICATION_CREDENTIALS</span>, rien n'est stocké dans le projet.</p>
+        <div class="seg">
+          <label><input type="radio" name="business_source" value="none" checked> Aucune</label>
+          <label><input type="radio" name="business_source" value="csv"> CSV local</label>
+          <label><input type="radio" name="business_source" value="gsc"> Search Console</label>
+          <label><input type="radio" name="business_source" value="ga4"> GA4</label>
+        </div>
+        <div class="bizpane" data-src="csv">
+          <label for="business_path">Chemin local du CSV (<span class="mono">url,revenue,conversions,clicks</span>, export Search Console « Pages » ou export GA4)</label>
+          <input type="text" id="business_path" placeholder="C:\chemin\vers\business.csv" class="mono">
+        </div>
+        <div class="bizpane" data-src="gsc">
+          <div class="opts" style="margin-top:0">
+            <div style="grid-column:1 / -1"><label for="gsc_site">Propriété Search Console (vide = <span class="mono">sc-domain:</span> du site)</label>
+              <div class="urlrow"><input type="text" id="gsc_site" list="gsc_sites" placeholder="sc-domain:exemple.fr ou https://www.exemple.fr/" class="mono" autocomplete="off"><button type="button" class="btn" id="gsc_list">Lister mes propriétés</button></div>
+              <datalist id="gsc_sites"></datalist>
+              <div class="note" id="gsc_note"></div>
+            </div>
+            <div><label for="business_days_gsc">Période (jours, fin il y a 3 jours)</label><input type="number" id="business_days_gsc" value="90" min="1" max="480"></div>
+          </div>
+          <p class="note">Dimension page, type web, pagination par 25 000 lignes. Colonnes : clics, impressions, CTR, position. La famine est calculée sur les clics ; les impressions sont lues comme la demande.</p>
+        </div>
+        <div class="bizpane" data-src="ga4">
+          <div class="opts" style="margin-top:0">
+            <div><label for="ga4_property">Identifiant de propriété GA4</label><input type="text" id="ga4_property" placeholder="123456789" class="mono" autocomplete="off"></div>
+            <div><label for="ga4_dimension">Dimension</label><select id="ga4_dimension"><option value="landingPagePlusQueryString">Page d'atterrissage + requête</option><option value="landingPage">Page d'atterrissage</option></select></div>
+            <div><label for="business_days_ga4">Période (jours, fin il y a 3 jours)</label><input type="number" id="business_days_ga4" value="90" min="1" max="480"></div>
+          </div>
+          <p class="note">Métriques : sessions, événements clés (conversions), revenu total. Les chemins sont préfixés par l'adresse du site pour redevenir des URL complètes.</p>
+        </div>
+        <div class="note" id="biz_caps"></div>
+      </fieldset>
+    </form>
+    <p class="note">Le crawl lit le HTML servi (pas de rendu JavaScript). Un site de 500 pages prend au moins deux minutes et demie avec le délai par défaut (une requête toutes les 0,3 s, quel que soit le nombre de requêtes parallèles). Pour un export Screaming Frog ou un CSV d'arêtes d'un autre crawler, utiliser la ligne de commande <span class="mono">python -m prgraph compute</span>.</p>
+  </div>
+
+  <div class="card status" id="status">
+    <div class="phase"><span class="dot" id="dot"></span><span class="big" id="phase">en attente<small id="elapsed"></small></span></div>
+    <div class="mono" id="curUrl"></div>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px">
+      <span class="big" id="pages">0<small>pages récupérées</small></span>
+      <span style="flex:1"></span>
+      <button class="btn" id="stop">Arrêter le crawl et calculer</button>
+      <a class="btn primary" id="open" style="display:none">Ouvrir le rapport</a>
+    </div>
+    <div class="joberr" id="jobErr" role="alert" hidden></div>
+    <pre id="log"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Analyses précédentes</h2>
+    <table><thead><tr><th>Site</th><th class="num">Pages</th><th class="num">Liens</th><th>Date</th><th></th></tr></thead><tbody id="runs"><tr><td colspan="5" class="note">aucune analyse pour l'instant</td></tr></tbody></table>
+  </div>
+</div>
+<script nonce="__PRGRAPH_NONCE__">
+(function(){
+const $=id=>document.getElementById(id);
+// Jeton anti-CSRF remis par le serveur (balise meta) : joint à chaque POST dans l'en-tête X-Prgraph-Token.
+const TOKEN=(document.querySelector('meta[name=prgraph-token]')||{}).content||'';
+const postJson=(url,body)=>fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-Prgraph-Token':TOKEN},body:JSON.stringify(body||{})});
+// Toute valeur venue du serveur passe par esc() avant d'entrer dans du HTML ; runHref() construit un lien vers un fichier d'analyse.
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const runHref=(id,file)=>'/runs/'+encodeURIComponent(id)+'/'+file;
+let polling=null, lastId=null;
+function fmt(n){ return (n==null)?'–':Number(n).toLocaleString('fr-FR'); }
+async function refresh(){
+  let s; try{ s = await (await fetch('/api/status',{cache:'no-store'})).json(); }catch(e){ return; }
+  const tb=$('runs');
+  const bizLabel = r=>{ const src={csv:'CSV',gsc:'Search Console',ga4:'GA4'}[r.business_source]; if(!src) return ''; const b=r.business; return `<br><small class="note">${esc(src)}${b?` · ${esc(fmt(b.joined))} URL jointes · couverture ${esc(Math.round(100*b.coverage))} %`:''}</small>`; };
+  if(s.runs.length){ tb.innerHTML = s.runs.map(r=>`<tr><td><span class="mono">${esc(r.url||r.id)}</span>${bizLabel(r)}</td><td class="num">${esc(fmt(r.pages))}</td><td class="num">${esc(fmt(r.edges))}</td><td>${r.finished?esc(String(r.finished).replace('T',' ').slice(0,16)):''}</td><td>${r.report?`<a href="${esc(runHref(r.id,'report.html'))}">rapport</a> · <a href="${esc(runHref(r.id,'findings.md'))}">findings</a> · <a href="${esc(runHref(r.id,'pages.csv'))}">csv</a>`:'<span class="note">incomplet</span>'}</td></tr>`).join(''); }
+  const c=s.current;
+  if(c){
+    $('status').classList.add('on');
+    $('phase').firstChild.nodeValue = c.phase;
+    $('elapsed').textContent = c.elapsed+' s';
+    $('curUrl').textContent = c.url||'';
+    $('pages').firstChild.nodeValue = fmt(c.pages);
+    $('log').textContent = c.log.join('\n'); $('log').scrollTop = $('log').scrollHeight;
+    const dot=$('dot'); dot.className='dot'+(c.done?(c.error?' err':' done'):'');
+    // Erreur de la tâche (aucune page récupérée, robots.txt...) : texte brut, jamais interprété comme du HTML.
+    const jobErr=$('jobErr'); jobErr.textContent = (c.done && c.error) ? c.error : ''; jobErr.hidden = !(c.done && c.error);
+    $('stop').style.display = c.done?'none':'';
+    $('go').disabled = !c.done;
+    if(c.done && !c.error){ $('open').style.display=''; $('open').href=runHref(c.id,'report.html'); if(lastId===c.id && !$('open').dataset.opened){ $('open').dataset.opened='1'; location.href=$('open').href; } }
+    else $('open').style.display='none';
+    if(c.done && polling){ clearInterval(polling); polling=null; }
+  }
+}
+// ── Données business : choix de la source ──────────────────────────────────
+const bizSource = ()=> (document.querySelector('input[name=business_source]:checked')||{}).value||'none';
+function showBiz(){ const v=bizSource(); document.querySelectorAll('.bizpane').forEach(p=>p.classList.toggle('on',p.dataset.src===v)); }
+document.querySelectorAll('input[name=business_source]').forEach(r=>r.addEventListener('change',showBiz));
+showBiz();
+(async function caps(){
+  let c; try{ c = await (await fetch('/api/business/capabilities',{cache:'no-store'})).json(); }catch(e){ return; }
+  const ok=(b,yes,no)=>`<b class="${b?'':'ko'}">${b?yes:no}</b>`;
+  $('biz_caps').innerHTML = `<span class="caps">Identifiants Google : ${ok(c.credentials,'trouvés','absents')}${c.credentials?` <span class="mono">${esc(c.credentials_path)}</span>`:' (définir GOOGLE_APPLICATION_CREDENTIALS)'}</span>`
+    + `<span class="caps">Bibliothèque Search Console : ${ok(c.gsc,'présente','absente')}</span><span class="caps">Bibliothèque GA4 : ${ok(c.ga4,'présente','absente')}</span>`
+    + ((!c.gsc||!c.ga4)?`<br>Installer : <span class="mono">pip install google-api-python-client google-analytics-data</span>`:'');
+})();
+$('gsc_list').addEventListener('click', async ()=>{
+  $('gsc_list').disabled=true; $('gsc_note').textContent='interrogation de sites.list…';
+  try{
+    const j = await (await fetch('/api/gsc/sites',{cache:'no-store'})).json();
+    if(j.error){ $('gsc_note').innerHTML = `<span class="err">${esc(j.error)}</span>`; }
+    else { $('gsc_sites').innerHTML = j.sites.map(s=>`<option value="${esc(s.site_url)}">${esc(s.permission)}</option>`).join(''); $('gsc_note').textContent = j.sites.length? `${j.sites.length} propriété(s) : ouvrir la liste du champ ci-dessus` : 'aucune propriété accessible avec ces identifiants'; if(j.sites.length && !$('gsc_site').value) $('gsc_site').value = j.sites[0].site_url; }
+  }catch(e){ $('gsc_note').innerHTML = '<span class="err">serveur injoignable</span>'; }
+  $('gsc_list').disabled=false;
+});
+// ── Adresse à analyser : vérifiée avant tout appel au serveur ─────────────────
+function urlError(raw){
+  const v=String(raw||'').trim();
+  if(!v) return 'Indiquez l\'adresse du site à analyser, par exemple https://www.exemple.fr';
+  if(/\s/.test(v)) return 'Adresse invalide : elle ne doit pas contenir d\'espace.';
+  let u; try{ u=new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(v)?v:'https://'+v); }catch(err){ u=null; }
+  if(!u) return 'Adresse invalide : saisissez une adresse comme https://www.exemple.fr';
+  if(u.protocol!=='http:' && u.protocol!=='https:') return 'Adresse invalide : seules les adresses http:// et https:// sont acceptées.';
+  const h=u.hostname;
+  if(!h || !(h.includes('.') || h==='localhost' || h.startsWith('['))) return 'Adresse invalide : il manque le nom de domaine complet (par exemple www.exemple.fr).';
+  return '';
+}
+function showUrlError(msg){
+  const box=$('url_err'); box.textContent=msg; box.hidden=!msg;
+  if(msg){ $('url').setAttribute('aria-invalid','true'); $('url').focus(); } else $('url').removeAttribute('aria-invalid');
+}
+$('url').addEventListener('input', ()=>{ if(!$('url_err').hidden) showUrlError(''); });
+$('form').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const bad = urlError($('url').value);
+  showUrlError(bad);
+  if(bad) return;
+  const src = bizSource();
+  const delay = parseFloat($('delay').value);     // délai par requête, plancher 0,1 s (comme le crawler)
+  const body={url:$('url').value.trim(), max_pages:+$('max_pages').value, delay:Number.isFinite(delay)?Math.max(0.1, delay):0.3, workers:+$('workers').value,
+    weights_profile:$('weights_profile').value, dangling:$('dangling').value, respect_robots:$('respect_robots').checked,
+    include_subdomains:$('include_subdomains').checked, business_source:src, business_path:$('business_path').value.trim(),
+    gsc_site:$('gsc_site').value.trim(), ga4_property:$('ga4_property').value.trim(), ga4_dimension:$('ga4_dimension').value,
+    business_days: +(src==='ga4' ? $('business_days_ga4').value : $('business_days_gsc').value) || 90,
+    strategic_urls: $('strategic_urls').value.split(/\n+/).map(x=>x.trim()).filter(Boolean)};
+  if(src==='csv' && !body.business_path){ alert('Indiquez le chemin du CSV business, ou choisissez « Aucune ».'); return; }
+  if(src==='ga4' && !body.ga4_property){ alert('Indiquez l\'identifiant de propriété GA4.'); return; }
+  let r, j;
+  try{ r = await postJson('/api/analyze', body); j = await r.json(); }catch(e){ alert('serveur injoignable'); return; }
+  if(!r.ok){ alert(j.error||'erreur'); return; }
+  lastId=j.id; $('open').dataset.opened=''; $('status').classList.add('on'); $('go').disabled=true;
+  if(polling) clearInterval(polling); polling=setInterval(refresh,1500); refresh();
+});
+$('stop').addEventListener('click', ()=>postJson('/api/stop', {}));
+refresh(); polling=setInterval(refresh,3000);
+})();
+</script>
+</body>
+</html>

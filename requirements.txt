@@ -1,0 +1,15 @@
+numpy>=1.26
+scipy>=1.11
+pandas>=2.0
+beautifulsoup4>=4.12
+lxml>=5.0
+openpyxl>=3.1
+requests>=2.31
+pytest>=8.0
+networkx>=3.0
+
+# Connecteurs Search Console / GA4 (optionnels : import paresseux, message clair si absents).
+# pip install google-api-python-client google-analytics-data google-auth-oauthlib
+# google-api-python-client>=2.100   # fetch-gsc, gsc-sites, source « Search Console » du lanceur
+# google-analytics-data>=0.18       # fetch-ga4, source « GA4 » du lanceur
+# google-auth-oauthlib>=1.2         # seulement pour des identifiants OAuth « application installée »
